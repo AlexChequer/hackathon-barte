@@ -54,4 +54,8 @@ O que é *interpretação* está marcado como **hipótese** e precisa ir para `H
 ## 05 Extratos
 
 - **Aurora** (conta principal): 21 TEDs da Orbe, 4 transferências para o Meridiano, 2 PIX enviados por lojista (repasses?), folha, impostos (DARF PIS/COFINS/IRRF, ISS, INSS, FGTS), tarifas, AWS, Google, condomínio, contabilidade, `PIX RECEBIDO … SEM IDENTIFICACAO`, `DEVOLUCAO PIX - MUNDO ABERTO`. **Saldo final negativo: −1.920.088,60.**
+- Aurora `L65`: `DEVOLUCAO PIX - MUNDO ABERTO INTERC` é um **crédito** de +12.400,00 (entrada, não saída). Mundo Aberto recebeu PIX de −48.714,59 (L26) e −88.746,05 (L76).
+- Aurora `L50`: `PIX RECEBIDO 38686002000180 SEM IDENTIFICACAO` de +7.350,00.
+- **Meridiano: armadilha de nome.** `PIX RECEB PONTE AÉREA ESTUDANTIL` é o **lojista** Ponte Aérea, não a Ponte Câmbio. Regra por palavra-chave "PONTE" erra.
+- Meridiano `MRD2026090132`: `TED RECEB PONTE CAMBIO SA REPASSE COMISSAO 08/2026` de +61.884,12 é a comissão de **agosto** recebida em setembro (baixa de 1.1.03.002, não receita de setembro?).
 - **Meridiano** (conta de câmbio): PIX recebidos de lojistas (recurso para remessa), 21 TEDs enviadas à Ponte, PIX/TED recebidos da Ponte, aplicação/resgate CDB, rendimento, IOF, tarifas, seguro, TEDs recebidas da própria Tarvo.
