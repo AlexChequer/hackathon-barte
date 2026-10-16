@@ -35,13 +35,18 @@ def _safe_rate(value: object) -> object:
 
 
 def load_taxas(path: Path) -> pd.DataFrame:
-    ws = openpyxl.load_workbook(path, data_only=True, read_only=True)[SHEET]
-    rows = list(ws.iter_rows(min_row=HEADER_ROW, values_only=True))
-    header = list(rows[0])
+    # sem read_only: comentários de célula carregam regra de negócio (ex.: Casa do Estudante, R6)
+    ws = openpyxl.load_workbook(path, data_only=True)[SHEET]
+    rows = list(ws.iter_rows(min_row=HEADER_ROW))
+    header = [cell.value for cell in rows[0]]
     records = [
-        {"linha_origem": HEADER_ROW + offset, **dict(zip(header, row, strict=False))}
+        {
+            "linha_origem": HEADER_ROW + offset,
+            **dict(zip(header, (cell.value for cell in row), strict=False)),
+            "comentarios": " | ".join(c.comment.text.strip() for c in row if c.comment) or None,
+        }
         for offset, row in enumerate(rows[1:], start=1)
-        if row[0] and row[1]  # linha de lojista: tem nome e CNPJ (ignora rodapé '* spread...')
+        if row[0].value and row[1].value  # linha de lojista: tem nome e CNPJ (ignora rodapé '* spread...')
     ]
     df = pd.DataFrame(records).rename(columns=COLUMNS)
     return df.assign(

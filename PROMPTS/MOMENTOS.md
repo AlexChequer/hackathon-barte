@@ -12,6 +12,9 @@ De 2 a 4 momentos. Para cada um, em uma ou duas frases: o que pedimos, o que a I
 - **IA:** olhou só a contagem de taxas distintas e concluiu que a Orbe aplicava a tabela de 2025 para alguns lojistas.
 - **O que fizemos:** comparamos taxa aplicada × contratada por EC e modalidade. A divergência real é concentrada: Rota Global com +0,5 p.p. em todo crédito, Bridge por causa da vigência, e 4 ECs fora da planilha. Corrigimos o `MAPA_DADOS.md`.
 
-## 3. _a preencher_
+## 3. Setup: o loader da IA ignorava os comentários da planilha (candidato)
+- **Pedido:** ler a planilha de taxas "como ela vem".
+- **IA:** usou o openpyxl em `read_only`, que lê só os valores das células. Por isso o comentário da Bia na Casa do Estudante ("conversar com Diego (comercial) sobre condição especial") ficou de fora. Essa era a pista de uma tarifa zerada que vale R$ 15,4 mil em divergências.
+- **O que fizemos:** soubemos pela pergunta pública de outro time (R6), checamos se havia comentários e linhas ou colunas ocultas em todos os xlsx e mudamos o loader para ler comentários, com teste.
 
-## 3. _a preencher_
+## 4. _a preencher_

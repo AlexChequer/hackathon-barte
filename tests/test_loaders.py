@@ -31,6 +31,12 @@ def test_taxas_reads_every_lojista_row(sources):
     assert oxford["credito_vista"] == Decimal("0.0259")  # veio como texto '2,59%'
 
 
+def test_taxas_keeps_cell_comments(sources):
+    taxas = sources["taxas"]
+    casa = taxas[taxas["ec_orbe"] == "1018325654"].iloc[0]
+    assert "condição especial" in casa["comentarios"]
+
+
 def test_ponte_rows_match_declared_footer(sources):
     ponte = sources["ponte"]
     footer = load_ponte_footer(find_file(DATA, "ponte"))
