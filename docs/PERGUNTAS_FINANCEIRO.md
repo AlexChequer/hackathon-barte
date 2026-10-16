@@ -7,10 +7,11 @@
 ## Respondidas
 - ✅ R1: base da comissão = taxa contratada; a divergência é decidida caso a caso pelo financeiro.
 - ✅ R2 (MN AI): estorno abate no mês do estorno, com a taxa da data da venda original.
+- ✅ R3: 3 ECs mapeados para linhas da planilha; Atlas não fatura, pendência para o Comercial.
 
 ## Fila, em ordem de prioridade
 
-1. **ECs sem planilha** (290 transações, ~15% da receita de checkout): qual o CNPJ e a taxa de `1043300981 HORIZONTE INTERCAMBIO`, `1043396662 HORIZONTE VIAGENS TURISMO`, `1076801732 ATLAS IDIOMAS` e `1038867654 KIWI EXPERIENCE`?
+1. ~~**ECs sem planilha**~~ (R3) (290 transações, ~15% da receita de checkout): qual o CNPJ e a taxa de `1043300981 HORIZONTE INTERCAMBIO`, `1043396662 HORIZONTE VIAGENS TURISMO`, `1076801732 ATLAS IDIOMAS` e `1038867654 KIWI EXPERIENCE`?
 2. **Nota e comissão de remessa**: a comissão por lojista é 50% do `Spread R$` de cada operação? A nota de intermediação é emitida para a Ponte Câmbio (como sugere o e-mail) ou para cada lojista?
 3. **Operações estranhas da Ponte**: `PC-0926-0162` duplicada ("reprocessada") conta uma vez? Os 4 spreads negativos "Taxa travada no pedido (D-1)" (`PC-0926-0210`, `0326`, `0491`, `0545`; −R$ 1.834) são aceitos, contestados ou trocados pelo estimado D-1?
 4. **Antecipação**: os 2,10% são fixos sobre o valor antecipado? A reversão (ex.: `AN88445093` reverte `AN88445076`, Kiwi) cancela a receita inteira?
