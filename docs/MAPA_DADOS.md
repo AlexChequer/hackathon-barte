@@ -22,8 +22,8 @@ O que é *interpretação* está marcado como **hipótese** e precisa ir para `H
 - ECs na Orbe que **não estão** na planilha de taxas: `1043300981 HORIZONTE INTERCAMBIO`, `1043396662 HORIZONTE VIAGENS TURISMO`, `1076801732 ATLAS IDIOMAS`, `1038867654 KIWI EXPERIENCE`.
 - Esses 4 ECs somam **290 transações** sem taxa contratada (Kiwi 85, Horizonte Intercâmbio 73, Horizonte Viagens Turismo 75, Atlas 57).
 - Comparação exploratória entre a taxa aplicada e a contratada por EC + modalidade, **sem considerar a vigência**:
-  - **Rota Global (1074504011)**: +0,50 p.p. em **todo crédito** (vista 2,49→2,99, 2–6x 2,99→3,49, 7–12x 3,59→4,09), em 87 transações. Débito e Pix batem. Forte candidata a divergência real.
-  - **Bridge (1075624862)**: 9 transações a 2,19% contra 2,59%. Provavelmente é só a vigência nova a partir de 15/09, a confirmar no motor.
+  - **Rota Global (1074504011)**: +0,50 p.p. em **todo crédito** (vista 2,49→2,99, 2–6x 2,99→3,49, 7–12x 3,59→4,09), em 87 transações. Débito e Pix batem. **Começa em 12/09**: até 11/09 o crédito bate com a planilha. A planilha foi atualizada pela última vez em 02/09. Hipóteses: renegociação que não entrou na planilha **ou** erro de cadastro na Orbe.
+  - **Bridge (1075624862)**: com a vigência pela data da venda (R2/P3), as vendas a 2,19% de 23/09 em diante estão corretas. **Mas de 15/09 a 18/09 a Orbe ainda cobrou 2,59%** (5 vendas): divergência real, porque a Orbe demorou a atualizar.
   - Todos os outros ECs da planilha batem 100%.
   - _Correção:_ a primeira leitura (feita pela IA) dizia que a Orbe usava a tabela antiga de 2025. Isso estava errado. Ver `PROMPTS/MOMENTOS.md`.
 

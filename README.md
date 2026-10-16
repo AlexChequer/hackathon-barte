@@ -35,6 +35,7 @@ Para outubro, basta apontar `--dados` para a pasta com os arquivos novos, no mes
 ## Documentação
 
 - `HIPOTESES.md`: fatos, premissas e perguntas/respostas do financeiro.
+- `docs/CONTEXTO.md`: o negócio explicado, onde está o problema e por que cada dúvida importa.
 - `docs/MAPA_DADOS.md`: o que tem em cada arquivo e as armadilhas encontradas.
 - `docs/PERGUNTAS_FINANCEIRO.md`: rascunho das perguntas.
 - `docs/PLANO.md`: divisão do time e linha do tempo.

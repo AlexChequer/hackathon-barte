@@ -19,8 +19,18 @@ Ver `docs/MAPA_DADOS.md`. Destaques:
 
 ## Perguntas feitas ao financeiro
 
-| Hora | Canal | Pergunta | Resposta | Impacto no código |
-|---|---|---|---|---|
-| | | | | |
+Canal: `#duvidas-hackathon-ai` (o `#tarvo-financeiro` não foi criado; a organização orientou usar o prefixo `[financeiro]`/`[tarvo]`). Respondente: manuel.freitas, no papel do financeiro.
+
+| # | Hora (16/10) | Quem perguntou | Pergunta | Resposta | Impacto no código |
+|---|---|---|---|---|---|
+| R1 | ~20h01 → ~20h05 | **Fox AI** (nós) | A comissão de checkout usa o `valor_taxa` cobrado pela Orbe ou bruto × taxa contratada? O que vai na nota? A diferença é devolvida? | "A gente fatura pela taxa **contratada**: valor bruto × taxa da planilha, linha a linha. O `valor_taxa` do relatório é o que a Orbe cobrou e nem sempre bate com o contrato. Na nota fiscal vai a comissão calculada pela taxa contratada. Quando a taxa aplicada é diferente da contratada, é divergência. Se a Orbe cobrou a mais, a diferença volta para o lojista e eu cobro a Orbe. **Isso eu decido, não vai automático.** Preciso ver cada caso com transação e valor." | Comissão = Σ bruto × taxa contratada. Nota = comissão. Cada divergência → linha em `divergencias_taxa.csv` **e** pendência com `quem_decide = Financeiro` |
+| R2 | ~20h04 → ~20h06 | MN AI (outro time, resposta pública) | Estorno devolve a taxa e abate a comissão? E se a venda for de agosto? Ex.: `TX88444848` | "Sim. Estorno devolve a taxa ao lojista e abate a comissão do mês. Venda de agosto estornada em setembro **entra em setembro**, que é o mês do estorno. Agosto já está fechado e não reabro. A taxa usada é a que valia **na data da venda original**." | Estorno entra com sinal negativo no mês do `data_movimento`, com a taxa contratada vigente em `data_venda_original` |
+
+### Premissas derivadas das respostas
+
+| # | Premissa | Base |
+|---|---|---|
+| P3 | A vigência de taxa é decidida pela **data da venda** (`data_movimento` da VENDA; `data_venda_original` do ESTORNO). Isso resolve a Bridge (2,59% até 14/09, 2,19% a partir de 15/09) | Extensão de R2 |
+| P4 | Divergência a **menor** (a Orbe cobrou menos que o contratado) também é reportada como divergência, com `diferenca_brl` negativa | R1 fala de "diferente"; o sinal ainda não foi confirmado |
 
 Rascunhos em `docs/PERGUNTAS_FINANCEIRO.md`.
