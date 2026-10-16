@@ -1,0 +1,27 @@
+[project]
+name = "tarvo-fechamento"
+version = "0.1.0"
+description = "Motor de fechamento mensal da Tarvo Pagamentos (Hackathon Barte AI, out/2026)"
+requires-python = ">=3.11"
+dependencies = ["pandas>=2.2", "openpyxl>=3.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
