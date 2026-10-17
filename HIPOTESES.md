@@ -65,3 +65,29 @@ Canal: `#duvidas-hackathon-ai` (o `#tarvo-financeiro` não foi criado; a organiz
 | P15 | **Decisão de encaminhamento** (devolver ao lojista, cobrar da Orbe, contestar com a Ponte, baixar via acordo etc.) **não altera** o reconhecimento da comissão contratual, nem o valor da divergência. É um estado da pendência; não gera lançamentos automáticos neste MVP | R1 (Helena: "isso eu decido, não vai automático") |
 
 Rascunhos em `docs/PERGUNTAS_FINANCEIRO.md`.
+
+## Organização (regras de entrega)
+
+| # | Hora (17/10) | Regra | Impacto |
+|---|---|---|---|
+| O1 | 09h21 | "A banca precisa conseguir **rodar o fechamento** pela solução de vocês. (1) Recebe os arquivos do mês (upload ou pasta). **Nada fixo no código para setembro.** (2) Roda tudo com um clique ou um comando. (3) Mostra o resultado e gera os seis arquivos de `saida/`. (4) O README explica como abrir e rodar, e **onde configurar a chave de API**. A banca vai rodar com os arquivos do case e comparar com o `saida/` entregue." | `saida/` com os 6 CSVs precisa ser commitado. Tirar tudo que é fixo de setembro (ids dos negativos da Ponte, data 30/09 da transferência, competência default). README com `.env`/chave de API |
+
+Material de apoio "Do Cartão ao Caixa" (09h15): só papéis do arranjo (portador, lojista, subadquirente, adquirente, bandeira, emissor). Nenhuma regra nova.
+
+## Aguardando resposta (perguntas públicas de outros times, 17/10 manhã)
+
+Não mandar as nossas sobre o mesmo tema antes de sair a resposta.
+
+| Quem | Hora | Tema | Cobre a nossa |
+|---|---|---|---|
+| MN AI | 08h43 | Os 4 spreads negativos entram também em `divergencias_taxa` ou só em pendência? | — |
+| Barteman (P3) | 09h09 | Casa do Estudante: o cobrado na tarifa zerada é divergência comum? | parte da C2 |
+| Barteman (P5) | 09h09 | O que é divergência na remessa; negativos entram? | — |
+| Barteman (P2) | 09h09 | Venda cobrada acima e estornada (`TX88446419`, R$ 107,53) | **C1** |
+| Barteman (P1) | 09h09 | Taxa do estorno de venda anterior à tarifa zerada (`TX88445133`) | já tratado (R2) |
+| Barteman (P6) / Desbravadores (1) | 09h09 / 09h17 | PIX R$ 18.240,00 "PONTE AEREA ESTUDANTIL L" (`MRD2026090425`) sem remessa correspondente | extratos |
+| Barteman (P8) | 09h09 | Atlas antecipou R$ 179.592,82 em 15/09 com R$ 55.357,50 em vendas: limite? quem avisar? | checkout |
+| Barteman (P4) | 09h09 | Orbe cobrando abaixo do contrato: quem fica com a diferença? | **C3 / P4** |
+| Desbravadores (2) | 09h17 | Operação da Ponte com CNPJ fora da planilha: calcular metade e abrir pendência de cadastro? | remessa (sem caso em set) |
+| MN AI (Nader) | 09h21 | Atlas confirmada depois: as 57 transações de setembro faturam em outubro? | checkout |
+| Desbravadores Barte (1–3) | 09h29 | Negativos em divergências; devolução L65 em 2.1.01.001 ou 2.1.01.002; provisionamento de folha/impostos é sempre ou só de agosto? | extratos |
