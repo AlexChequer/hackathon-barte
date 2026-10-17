@@ -16,7 +16,7 @@ Um comando (`python -m tarvo --dados <pasta do mês> --saida saida`) lê os 6 ar
 | `divergencias_taxa` | 233 | `CK-DIV` 92 (Rota, Bridge: cobrar da Orbe R$ 1.576,23) · `CK-COND` 118 (Casa: devolver, fora da cobrança) · `RM-DIV` 23 (Mundo Aberto R$ 1.418,85) |
 | `notas_a_emitir` | 21 | 20 checkout + 1 Ponte Câmbio (R$ 39.543,45) |
 | `lancamentos_classificados` | 184 | 184/184 por regra, só contas analíticas |
-| `pendencias` | 67 | Atlas 57 (Comercial) · Casa devolução 1 · Casa nota negativa 1 · negativos da Ponte 4 · conferir TED 1 · extratos 3 |
+| `pendencias` | 13 | Atlas 1 (Comercial) · contestação Orbe 2 (Rota, Bridge) · Casa devolução 1 · Casa nota negativa 1 · negativos da Ponte 4 · conferir TED 1 · extratos 3 |
 | `rastro` | 4.710 | Soma exata por `id_saida` |
 
 Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementação independente do André bate centavo a centavo nas 21 comissões de checkout.
@@ -27,7 +27,7 @@ Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 |---|---|
 | R1/R8/R14 comissão pela contratada, arredondamento por linha | ✅ |
 | R2/R29/R31 estorno pela taxa da venda original, no mês do estorno | ✅ |
-| R3/R30 mapa de ECs por CNPJ; Atlas não fatura | ✅ Atlas fora de comissões (P24) · ❌ CNPJ 39566044000119 (aba 2025) na pendência |
+| R3/R30 mapa de ECs por CNPJ; Atlas não fatura | ✅ Atlas fora de comissões (P24), 1 pendência com CNPJ 39566044000119 (só identidade) |
 | R4 1 nota por lojista; ≤ 0 sem nota + pendência; 1 nota Ponte | ✅ |
 | R5/R15 remessa 50% do realizado; negativo fora; duplicata 1×; padrão 1,5% | ✅ negativos por regra geral, sem ids fixos |
 | R6/R16.1/R22/R28.1 Casa = concessão fora do contrato → devolução, fora da cobrança da Orbe | ✅ `CK-COND` + pendência; fonte única `config/condicoes_comerciais.json` |

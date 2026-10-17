@@ -71,11 +71,21 @@ def test_bridge_single_nota_per_cnpj(res_checkout):
     assert len(bridge) == 1
 
 
-def test_atlas_opens_sem_contrato_pendencias(res_checkout):
-    pend = res_checkout.pendencias
-    atlas = pend[pend["tipo"] == "SEM_CONTRATO"]
-    assert len(atlas) >= 1
-    assert not res_checkout.comissoes["cnpj"].astype(str).str.contains("ATLAS").any()
+def test_atlas_vira_uma_pendencia_por_lojista_identificada_pelo_cnpj(res_checkout):
+    """R3 + R24.1 + R30: 1 pendência para o Comercial, CNPJ da aba 2025 só como identidade."""
+    atlas = res_checkout.pendencias[res_checkout.pendencias["tipo"] == "SEM_CONTRATO"]
+    assert len(atlas) == 1
+    linha = atlas.iloc[0]
+    assert linha["id_saida"] == "CK-SEMCONTRATO-2026-09-39566044000119"
+    assert linha["ref_origem"] == "39566044000119"
+    assert linha["valor_brl"] == Decimal("7876.05")
+    assert linha["quem_decide"] == "Comercial"
+    assert "Atlas Idiomas Ltda" in linha["motivo"] and "1076801732" in linha["motivo"]
+    rastro = res_checkout.rastro[res_checkout.rastro["id_saida"] == linha["id_saida"]]
+    assert len(rastro) == 57
+    assert sum(rastro["valor"]) == linha["valor_brl"]
+    assert "39566044000119" not in set(res_checkout.comissoes["cnpj"])  # P24: não fatura
+    assert "39566044000119" not in set(res_checkout.notas["tomador_cnpj"])
 
 
 def test_tx88445133_estorno_uses_historical_rate_no_divergence(res_checkout):
