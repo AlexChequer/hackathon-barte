@@ -93,11 +93,14 @@ def _arquivos(nomes):
     return [("arquivos", (DATA.joinpath(n).name, DATA.joinpath(n).read_bytes())) for n in nomes]
 
 
-def test_upload_sem_um_obrigatorio_e_recusado_com_o_nome_que_falta(cliente):
+def test_upload_sem_a_ponte_fecha_o_resto_e_avisa_o_bloqueio(cliente):
     nomes = [f.name for f in DATA.iterdir() if not f.name.startswith(("03_", "00_"))]
     r = cliente.post("/api/arquivos", files=_arquivos(nomes))
-    assert r.status_code == 422
-    assert "Ponte" in r.json()["detail"] and "faltando" in r.json()["detail"]
+    assert r.status_code == 200, r.text
+    assert [b["frente"] for b in r.json()["bloqueios"]] == ["remessa"]
+    assert r.json()["totais"]["comissao_remessa"] == "0.00"
+    assert cliente.get("/api/sinais").status_code == 200
+    assert cliente.get("/api/lojistas").status_code == 200
 
 
 def test_upload_com_obrigatorio_duplicado_e_recusado(cliente):
@@ -119,7 +122,7 @@ def test_conferir_reconhece_renomeado_pelo_conteudo_sem_gravar(cliente, tmp_path
     arquivos = [("arquivos", ("Relatorio Orbe Outubro.csv", orbe))]
     r = cliente.post("/api/arquivos/conferir", files=arquivos).json()
     assert r["arquivos"][0]["chave"] == "orbe" and r["arquivos"][0]["por"] == "conteudo"
-    assert any("faltando" in p for p in r["problemas"])
+    assert "ponte" in r["faltando"]
 
 
 def test_upload_com_nomes_trocados_fecha_igual(cliente):

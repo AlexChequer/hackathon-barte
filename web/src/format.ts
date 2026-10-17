@@ -33,5 +33,16 @@ export const TIPO_PENDENCIA: Record<string, string> = {
   PIX_NAO_IDENTIFICADO: "PIX sem identificação",
   DEVOLUCAO_LOJISTA_SEM_MOTIVO: "Devolução sem motivo",
   TRANSFERENCIA_EM_TRANSITO: "Transferência em trânsito",
+  FRENTE_BLOQUEADA: "Parte do fechamento bloqueada",
 };
 export const tipoPendencia = (t: string | null) => (t && TIPO_PENDENCIA[t]) || (t ?? "").replaceAll("_", " ").toLowerCase();
+
+export const FRENTE: Record<string, string> = { checkout: "Checkout", remessa: "Remessa", extratos: "Extratos" };
+export const ARQUIVO: Record<string, string> = {
+  orbe: "Relatório da Orbe",
+  taxas: "Tabela de taxas contratadas",
+  ponte: "Relatório de remessas (Ponte Câmbio)",
+  plano: "Plano de contas",
+  aurora: "Extrato Aurora",
+  meridiano: "Extrato Meridiano",
+};

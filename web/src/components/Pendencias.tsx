@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Fechamento, Linha, SinalAberto } from "../api";
-import { cnpj, tipoPendencia } from "../format";
+import { ARQUIVO, cnpj, tipoPendencia } from "../format";
 import { Valor } from "./Valor";
 
 const ORDEM = ["Financeiro", "Financeiro + Comercial", "Comercial"];
@@ -122,6 +122,7 @@ export function nomesPorCnpj(f: Fechamento): Record<string, string> {
 function rotulo(p: Linha, nomes: Record<string, string>): string {
   const ref = p.ref_origem ?? "";
   const id = p.id_saida ?? "";
+  if (p.tipo === "FRENTE_BLOQUEADA") return `falta ${ref.split("|").map((a) => ARQUIVO[a] ?? a).join(", ")}`;
   if (/^\d{14}$/.test(ref)) return nomes[ref] ?? (p.motivo ?? "").split(/[:(]/)[0].trim() ?? cnpj(ref);
   if (ref === "relatorio_ponte") return "Ponte Câmbio, relatório do mês";
   const banco = id.match(/^EX-PN-(AURORA|MERIDIANO)-/)?.[1];

@@ -202,7 +202,10 @@ def _sem_regra(row: pd.Series) -> dict:
     }
 
 
-def run(aurora: pd.DataFrame, meridiano: pd.DataFrame, plano: pd.DataFrame, competencia: str) -> EngineResult:
+def run(
+    aurora: pd.DataFrame, meridiano: pd.DataFrame, plano: pd.DataFrame, competencia: str,
+    conferir_transito: bool = True,
+) -> EngineResult:
     result = EngineResult()
     aceitas = set(plano[plano["aceita_lancamento"]]["COD_CONTA"])
 
@@ -256,7 +259,8 @@ def run(aurora: pd.DataFrame, meridiano: pd.DataFrame, plano: pd.DataFrame, comp
                 "metadata": f"pendencia_{pend['tipo']}",
             })
 
-    em_transito = _transferencias_em_transito(aurora, meridiano)
+    # Sem um dos bancos não dá para saber se a transferência chegou (R34: não inventar pendência).
+    em_transito = _transferencias_em_transito(aurora, meridiano) if conferir_transito else set()
     for _, row in aurora.iterrows():
         cls = _classifica_aurora(row)
         if row["ref_origem"] in em_transito:

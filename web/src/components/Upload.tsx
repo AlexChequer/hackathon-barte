@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Check, FileUp, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Bloqueio } from "../api";
+import { ARQUIVO, FRENTE } from "../format";
 
 export interface Esperado {
   chave: string;
@@ -13,6 +15,8 @@ export interface Esperado {
 interface Conferencia {
   arquivos: { nome: string; chave: string | null; por: "nome" | "conteudo" | null; nome_canonico: string | null }[];
   problemas: string[];
+  faltando: string[];
+  bloqueios: Bloqueio[];
 }
 
 /** O servidor reconhece cada arquivo pelo nome ou pelo conteúdo (tarvo.loaders.identificar). */
@@ -73,10 +77,10 @@ export function Upload({
     }
   }, [aberto]);
 
-  const [conf, setConf] = useState<Conferencia>({ arquivos: [], problemas: [] });
+  const [conf, setConf] = useState<Conferencia>({ arquivos: [], problemas: [], faltando: [], bloqueios: [] });
   const [conferindo, setConferindo] = useState(false);
   useEffect(() => {
-    if (arquivos.length === 0) return setConf({ arquivos: [], problemas: [] });
+    if (arquivos.length === 0) return setConf({ arquivos: [], problemas: [], faltando: [], bloqueios: [] });
     let vivo = true;
     setConferindo(true);
     conferir(arquivos)
@@ -126,8 +130,8 @@ export function Upload({
                 <h2 className="text-[15px] font-semibold">Enviar arquivos do mês</h2>
                 <p className="mt-1 text-sm text-tinta-2">
                   Envie os <strong className="font-semibold text-tinta">{obrigatorios.length} arquivos</strong> abaixo, os mesmos
-                  de todo mês. Sem um deles o fechamento não roda. Se o nome estiver diferente, o arquivo é reconhecido pelo
-                  conteúdo.
+                  de todo mês. Se faltar algum, o fechamento roda o que der e mostra o que ficou bloqueado. Nome diferente
+                  não tem problema: o arquivo é reconhecido pelo conteúdo.
                 </p>
               </div>
               <button onClick={aoFechar} aria-label="Fechar" className="rounded-md p-1.5 text-tinta-2 hover:bg-papel hover:text-tinta">
@@ -145,10 +149,10 @@ export function Upload({
                     <li
                       key={e.chave}
                       className={`flex gap-3 rounded-md border px-3 py-2.5 text-sm transition-colors ${
-                        falta || repetido ? "border-erro/40 bg-erro/5" : ok ? "border-linha bg-papel" : "border-linha"
+                        repetido ? "border-erro/40 bg-erro/5" : falta ? "border-decisao/50 bg-decisao-fundo" : ok ? "border-linha bg-papel" : "border-linha"
                       }`}
                     >
-                      <span className={`mt-0.5 shrink-0 ${ok ? "text-tinta" : falta || repetido ? "text-erro" : "text-tinta-3"}`}>
+                      <span className={`mt-0.5 shrink-0 ${ok ? "text-tinta" : repetido ? "text-erro" : falta ? "text-decisao-tinta" : "text-tinta-3"}`}>
                         {ok ? <Check size={16} /> : falta || repetido ? <TriangleAlert size={16} /> : <FileUp size={16} />}
                       </span>
                       <span className="min-w-0">
@@ -171,6 +175,20 @@ export function Upload({
                   );
                 })}
               </ol>
+
+              {arquivos.length > 0 && !conferindo && conf.bloqueios.length > 0 && conf.problemas.length === 0 && (
+                <div role="status" className="rounded-md border border-decisao/50 bg-decisao-fundo px-4 py-3 text-sm text-decisao-tinta">
+                  <p className="font-semibold">O fechamento vai sair em parte</p>
+                  <ul className="mt-1 space-y-1">
+                    {conf.bloqueios.map((b) => (
+                      <li key={b.frente}>
+                        <strong className="font-medium">{FRENTE[b.frente]}</strong> {b.parcial ? "fecha em parte" : "não fecha"}: falta{" "}
+                        {b.faltando.map((a) => ARQUIVO[a]).join(", ")}. Não sai: {b.nao_sai}.
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {desconhecidos.length > 0 && (
                 <div className="rounded-md border border-erro/40 bg-erro/5 px-3 py-2.5 text-sm">
@@ -246,6 +264,10 @@ export function Upload({
                   <span className="text-tinta-3">Conferindo os arquivos…</span>
                 ) : problemas.length > 0 ? (
                   <span className="font-medium text-erro">Faça o upload dos arquivos corretos ({problemas.length} {problemas.length === 1 ? "problema" : "problemas"})</span>
+                ) : conf.faltando.length > 0 ? (
+                  <span className="font-medium text-decisao-tinta">
+                    {conf.faltando.length === 1 ? "Falta 1 arquivo" : `Faltam ${conf.faltando.length} arquivos`}: fecha só o que der
+                  </span>
                 ) : (
                   <span className="flex items-center gap-1 text-tinta-2">
                     <Check size={15} /> Os {obrigatorios.length} arquivos estão certos ·{" "}
@@ -268,7 +290,7 @@ export function Upload({
                 }}
                 className="rounded-md bg-tinta px-4 py-2 text-sm font-medium text-folha transition-opacity disabled:opacity-40"
               >
-                {enviando ? "Fechando o mês…" : "Fechar o mês com estes arquivos"}
+                {enviando ? "Fechando o mês…" : conf.faltando.length > 0 ? "Fechar o que der" : "Fechar o mês com estes arquivos"}
               </button>
             </footer>
           </motion.aside>
