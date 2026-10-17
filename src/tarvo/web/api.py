@@ -19,7 +19,8 @@ from fastapi.staticfiles import StaticFiles
 from tarvo import condicoes as cond_mod
 from tarvo import rules, sinais
 from tarvo.avaliacao import avaliar_e_persistir
-from tarvo.loaders import ESPERADOS, FILES, OPCIONAIS, load_all, validar_lote
+from tarvo.loaders import ESPERADOS, FILES, OPCIONAIS, load_all
+from tarvo.loaders.identificar import classificar_lote
 from tarvo.orquestrador import ClosingResult, run_closing
 
 log = logging.getLogger("tarvo.web")
@@ -181,19 +182,33 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
     def get_arquivos_esperados() -> list[dict]:
         return ESPERADOS
 
-    @app.post("/api/arquivos")
-    async def post_arquivos(arquivos: Annotated[list[UploadFile], File()]) -> dict:
-        nomes = [Path(a.filename or "").name for a in arquivos]
-        problemas = validar_lote(nomes)
-        if problemas:
-            raise HTTPException(422, "Envie exatamente os 6 arquivos do mês. " + "; ".join(problemas))
-        destino = app.state.saida / "entradas" / dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-        destino.mkdir(parents=True, exist_ok=True)
-        for arquivo, nome in zip(arquivos, nomes, strict=True):
-            conteudo = await arquivo.read()
+    async def _ler(arquivos: list[UploadFile]) -> list[tuple[str, bytes]]:
+        lidos = []
+        for a in arquivos:
+            conteudo = await a.read()
+            nome = Path(a.filename or "").name
             if len(conteudo) > LIMITE_UPLOAD:
                 raise HTTPException(413, f"{nome} passa de 20 MB")
-            (destino / nome).write_bytes(conteudo)
+            lidos.append((nome, conteudo))
+        return lidos
+
+    @app.post("/api/arquivos/conferir")
+    async def post_conferir(arquivos: Annotated[list[UploadFile], File()]) -> dict:
+        """Só confere (não grava nem fecha): a tela mostra o que foi reconhecido e o que falta."""
+        return classificar_lote(await _ler(arquivos))
+
+    @app.post("/api/arquivos")
+    async def post_arquivos(arquivos: Annotated[list[UploadFile], File()]) -> dict:
+        lidos = await _ler(arquivos)
+        lote = classificar_lote(lidos)
+        if lote["problemas"]:
+            raise HTTPException(422, "Envie exatamente os 6 arquivos do mês. " + "; ".join(lote["problemas"]))
+        destino = app.state.saida / "entradas" / dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+        destino.mkdir(parents=True, exist_ok=True)
+        canonicos = {i["nome"]: i["nome_canonico"] for i in lote["arquivos"]}
+        for nome, conteudo in lidos:
+            if canonicos.get(nome):
+                (destino / canonicos[nome]).write_bytes(conteudo)
         app.state.dados = destino
         return resposta(fechar())
 

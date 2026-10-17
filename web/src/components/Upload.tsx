@@ -10,29 +10,30 @@ export interface Esperado {
   descricao: string;
 }
 
-const IGNORADOS = ["00_LEIA-ME*"];
-const casa = (nome: string, padrao: string) =>
-  new RegExp(`^${padrao.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".")}$`).test(nome);
+interface Conferencia {
+  arquivos: { nome: string; chave: string | null; por: "nome" | "conteudo" | null; nome_canonico: string | null }[];
+  problemas: string[];
+}
 
-/** Mesma conferência do servidor (tarvo.loaders.validar_lote), para avisar antes de enviar. */
-function conferir(arquivos: File[], esperados: Esperado[]) {
-  const problemas: string[] = [];
-  for (const f of arquivos)
-    if (!esperados.some((e) => casa(f.name, e.padrao)) && !IGNORADOS.some((p) => casa(f.name, p)))
-      problemas.push(`${f.name} não é um arquivo do fechamento`);
-  const porEsperado = esperados.map((e) => ({ e, achados: arquivos.filter((f) => casa(f.name, e.padrao)) }));
-  for (const { e, achados } of porEsperado) {
-    if (e.obrigatorio && achados.length === 0) problemas.push(`falta o ${e.nome}`);
-    if (e.obrigatorio && achados.length > 1) problemas.push(`mais de um ${e.nome}: ${achados.map((a) => a.name).join(", ")}`);
-  }
-  return { problemas, porEsperado };
+/** O servidor reconhece cada arquivo pelo nome ou pelo conteúdo (tarvo.loaders.identificar). */
+async function conferir(arquivos: File[]): Promise<Conferencia> {
+  const form = new FormData();
+  arquivos.forEach((f) => form.append("arquivos", f));
+  const r = await fetch("/api/arquivos/conferir", { method: "POST", body: form });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? `Erro ${r.status} ao conferir`);
+  return r.json();
 }
 
 /** Arquivo escolhido, com botão para tirar da lista antes de enviar. */
-function Anexo({ arquivo, aoRemover }: { arquivo: File; aoRemover: (nome: string) => void }) {
+function Anexo({ arquivo, porConteudo, aoRemover }: { arquivo: File; porConteudo?: boolean; aoRemover: (nome: string) => void }) {
   return (
     <span className="inline-flex max-w-full items-center gap-1 rounded border border-linha-forte bg-folha py-0.5 pr-0.5 pl-2 font-mono text-xs">
       <span className="truncate">{arquivo.name}</span>
+      {porConteudo && (
+        <span className="shrink-0 rounded bg-decisao-fundo px-1 font-sans text-[11px] text-decisao-tinta" title="O nome não segue o padrão; o arquivo foi reconhecido pelo conteúdo">
+          pelo conteúdo
+        </span>
+      )}
       <button
         type="button"
         onClick={() => aoRemover(arquivo.name)}
@@ -72,16 +73,33 @@ export function Upload({
     }
   }, [aberto]);
 
-  const { problemas, porEsperado } = useMemo(() => conferir(arquivos, esperados), [arquivos, esperados]);
+  const [conf, setConf] = useState<Conferencia>({ arquivos: [], problemas: [] });
+  const [conferindo, setConferindo] = useState(false);
+  useEffect(() => {
+    if (arquivos.length === 0) return setConf({ arquivos: [], problemas: [] });
+    let vivo = true;
+    setConferindo(true);
+    conferir(arquivos)
+      .then((c) => vivo && setConf(c))
+      .catch((e: Error) => vivo && setErroServidor(e.message))
+      .finally(() => vivo && setConferindo(false));
+    return () => {
+      vivo = false;
+    };
+  }, [arquivos]);
+  const problemas = conf.problemas;
+  const arquivo = (nome: string) => arquivos.find((f) => f.name === nome)!;
+  const porEsperado = useMemo(
+    () => esperados.map((e) => ({ e, achados: conf.arquivos.filter((a) => a.chave === e.chave && arquivos.some((f) => f.name === a.nome)) })),
+    [esperados, conf, arquivos],
+  );
   const obrigatorios = esperados.filter((e) => e.obrigatorio);
-  const pronto = arquivos.length > 0 && problemas.length === 0;
+  const pronto = arquivos.length > 0 && problemas.length === 0 && !conferindo && conf.arquivos.length > 0;
   const remover = (nome: string) => {
     setErroServidor(null);
     setArquivos((atuais) => atuais.filter((a) => a.name !== nome));
   };
-  const desconhecidos = arquivos.filter(
-    (f) => !esperados.some((e) => casa(f.name, e.padrao)) && !IGNORADOS.some((p) => casa(f.name, p)),
-  );
+  const desconhecidos = conf.arquivos.filter((a) => a.chave === null && arquivos.some((f) => f.name === a.nome));
   const adicionar = (lista: FileList | null) => {
     if (!lista) return;
     const novos = Array.from(lista);
@@ -108,7 +126,8 @@ export function Upload({
                 <h2 className="text-[15px] font-semibold">Enviar arquivos do mês</h2>
                 <p className="mt-1 text-sm text-tinta-2">
                   Envie os <strong className="font-semibold text-tinta">{obrigatorios.length} arquivos</strong> abaixo, os mesmos
-                  de todo mês. Sem um deles o fechamento não roda.
+                  de todo mês. Sem um deles o fechamento não roda. Se o nome estiver diferente, o arquivo é reconhecido pelo
+                  conteúdo.
                 </p>
               </div>
               <button onClick={aoFechar} aria-label="Fechar" className="rounded-md p-1.5 text-tinta-2 hover:bg-papel hover:text-tinta">
@@ -143,7 +162,7 @@ export function Upload({
                         ) : (
                           <span className="mt-1 flex flex-wrap gap-1.5">
                             {achados.map((a) => (
-                              <Anexo key={a.name} arquivo={a} aoRemover={remover} />
+                              <Anexo key={a.nome} arquivo={arquivo(a.nome)} porConteudo={a.por === "conteudo"} aoRemover={remover} />
                             ))}
                           </span>
                         )}
@@ -158,7 +177,7 @@ export function Upload({
                   <p className="font-medium text-erro">Não fazem parte do fechamento</p>
                   <span className="mt-1 flex flex-wrap gap-1.5">
                     {desconhecidos.map((a) => (
-                      <Anexo key={a.name} arquivo={a} aoRemover={remover} />
+                      <Anexo key={a.nome} arquivo={arquivo(a.nome)} aoRemover={remover} />
                     ))}
                   </span>
                 </div>
@@ -223,6 +242,8 @@ export function Upload({
               <div className="min-w-0 text-sm" aria-live="polite">
                 {arquivos.length === 0 ? (
                   <span className="text-tinta-3">Nenhum arquivo escolhido</span>
+                ) : conferindo ? (
+                  <span className="text-tinta-3">Conferindo os arquivos…</span>
                 ) : problemas.length > 0 ? (
                   <span className="font-medium text-erro">Faça o upload dos arquivos corretos ({problemas.length} {problemas.length === 1 ? "problema" : "problemas"})</span>
                 ) : (
