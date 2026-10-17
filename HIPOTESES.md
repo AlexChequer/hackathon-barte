@@ -100,10 +100,9 @@ Rascunhos em `docs/PERGUNTAS_FINANCEIRO.md`.
 | # | Hora (17/10) | Regra | Impacto |
 |---|---|---|---|
 | O1 | 09h21 | "A banca precisa conseguir **rodar o fechamento** pela solução de vocês. (1) Recebe os arquivos do mês (upload ou pasta). **Nada fixo no código para setembro.** (2) Roda tudo com um clique ou um comando. (3) Mostra o resultado e gera os seis arquivos de `saida/`. (4) O README explica como abrir e rodar, e **onde configurar a chave de API**. A banca vai rodar com os arquivos do case e comparar com o `saida/` entregue." | `saida/` com os 6 CSVs precisa ser commitado. Tirar tudo que é fixo de setembro (ids dos negativos da Ponte, data 30/09 da transferência, competência default). README com `.env`/chave de API |
+| O2 | 13h10 | "A Orbe mandou os ajustes de setembro que ficaram fora do relatório: `06_orbe_ajustes_tardios_set2026.csv`. São só 14 linhas, no mesmo formato do arquivo 01. Se a solução de vocês já recebe os arquivos do mês, deve bastar rodar de novo. **O fechamento entregue às 18h30 precisa considerar esse arquivo.**" | Loader opcional `*_orbe_ajustes_*.csv` junto da Orbe; checkout R$ 203.735,34 |
 
 Material de apoio "Do Cartão ao Caixa" (09h15): só papéis do arranjo (portador, lojista, subadquirente, adquirente, bandeira, emissor). Nenhuma regra nova.
-
-| O2 | 13h10 | "A Orbe mandou os ajustes de setembro que ficaram fora do relatório: `06_orbe_ajustes_tardios_set2026.csv`. São só 14 linhas, no mesmo formato do arquivo 01. Se a solução de vocês já recebe os arquivos do mês, deve bastar rodar de novo. **O fechamento entregue às 18h30 precisa considerar esse arquivo.**" | Loader opcional `*_orbe_ajustes_*.csv` junto da Orbe; checkout R$ 203.735,34 |
 
 ## Aguardando resposta (perguntas públicas de outros times)
 
