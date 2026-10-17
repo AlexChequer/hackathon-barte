@@ -28,6 +28,24 @@ function conferir(arquivos: File[], esperados: Esperado[]) {
   return { problemas, porEsperado };
 }
 
+/** Arquivo escolhido, com botão para tirar da lista antes de enviar. */
+function Anexo({ arquivo, aoRemover }: { arquivo: File; aoRemover: (nome: string) => void }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1 rounded border border-linha-forte bg-folha py-0.5 pr-0.5 pl-2 font-mono text-xs">
+      <span className="truncate">{arquivo.name}</span>
+      <button
+        type="button"
+        onClick={() => aoRemover(arquivo.name)}
+        aria-label={`Remover ${arquivo.name}`}
+        title="Remover"
+        className="rounded p-0.5 text-tinta-3 transition-colors hover:bg-erro/10 hover:text-erro"
+      >
+        <X size={13} />
+      </button>
+    </span>
+  );
+}
+
 export function Upload({
   aberto,
   aoFechar,
@@ -57,6 +75,13 @@ export function Upload({
   const { problemas, porEsperado } = useMemo(() => conferir(arquivos, esperados), [arquivos, esperados]);
   const obrigatorios = esperados.filter((e) => e.obrigatorio);
   const pronto = arquivos.length > 0 && problemas.length === 0;
+  const remover = (nome: string) => {
+    setErroServidor(null);
+    setArquivos((atuais) => atuais.filter((a) => a.name !== nome));
+  };
+  const desconhecidos = arquivos.filter(
+    (f) => !esperados.some((e) => casa(f.name, e.padrao)) && !IGNORADOS.some((p) => casa(f.name, p)),
+  );
   const adicionar = (lista: FileList | null) => {
     if (!lista) return;
     const novos = Array.from(lista);
@@ -113,14 +138,31 @@ export function Upload({
                           {!e.obrigatorio && <span className="ml-1.5 font-normal text-tinta-3">opcional</span>}
                         </span>
                         <span className="block text-tinta-2">{e.descricao}</span>
-                        <span className="block truncate font-mono text-xs text-tinta-3">
-                          {achados.length ? achados.map((a) => a.name).join(", ") : e.padrao}
-                        </span>
+                        {achados.length === 0 ? (
+                          <span className="block truncate font-mono text-xs text-tinta-3">{e.padrao}</span>
+                        ) : (
+                          <span className="mt-1 flex flex-wrap gap-1.5">
+                            {achados.map((a) => (
+                              <Anexo key={a.name} arquivo={a} aoRemover={remover} />
+                            ))}
+                          </span>
+                        )}
                       </span>
                     </li>
                   );
                 })}
               </ol>
+
+              {desconhecidos.length > 0 && (
+                <div className="rounded-md border border-erro/40 bg-erro/5 px-3 py-2.5 text-sm">
+                  <p className="font-medium text-erro">Não fazem parte do fechamento</p>
+                  <span className="mt-1 flex flex-wrap gap-1.5">
+                    {desconhecidos.map((a) => (
+                      <Anexo key={a.name} arquivo={a} aoRemover={remover} />
+                    ))}
+                  </span>
+                </div>
+              )}
 
               <button
                 onClick={() => input.current?.click()}
@@ -141,7 +183,16 @@ export function Upload({
                 <FileUp size={18} />
                 Arraste os arquivos aqui ou clique para escolher
               </button>
-              <input ref={input} type="file" multiple hidden onChange={(ev) => adicionar(ev.target.files)} />
+              <input
+                ref={input}
+                type="file"
+                multiple
+                hidden
+                onChange={(ev) => {
+                  adicionar(ev.target.files);
+                  ev.target.value = "";
+                }}
+              />
 
               <AnimatePresence>
                 {arquivos.length > 0 && problemas.length > 0 && (
