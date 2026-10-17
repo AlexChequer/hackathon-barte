@@ -20,6 +20,7 @@ from tarvo.engines.checkout_pendencias import (
     divergencias_condicao,
     nome_lojista,
     pendencias_contestacao_orbe,
+    pendencias_sem_contrato,
 )
 from tarvo.money import ZERO, pct, q, q_mul, sum_q
 
@@ -197,6 +198,7 @@ def run(
 
     linhas_tx: list[dict] = []  # cada tx vira "contribuicao" de comissao + info de divergência
     pendencias_tx: list[dict] = []
+    sem_contrato_tx: list[pd.Series] = []
     diagnosticos: list[dict] = []
 
     for _, tx in orbe.iterrows():
@@ -208,23 +210,9 @@ def run(
         data_tx = tx["data_movimento"]
         data_regra = _data_vigencia(tx)
 
-        # Atlas (R3/P10): sem contrato vigente, não fatura, não inventa.
+        # EC sem contrato (R3/P10/R30): não fatura, não inventa taxa; agrega por lojista no fim.
         if ec in rules.EC_SEM_CONTRATO:
-            pendencias_tx.append({
-                "id": f"CK-ATLAS-{tx['id_transacao']}",
-                "tipo": "SEM_CONTRATO",
-                "ref_origem": tx["id_transacao"],
-                "arquivo_origem": ARQUIVO_ORBE,
-                "valor_brl": q(tx["valor_taxa"] or ZERO),
-                "motivo": (
-                    f"Atlas Idiomas (EC {ec}) sem contrato vigente (R3): não fatura. "
-                    "Exposição bruta = cobrança da Orbe nesta transação."
-                ),
-                "quem_decide": "Comercial",
-                "cnpj": None,
-                "linha_negocio": "CHECKOUT",
-                "ec": ec,
-            })
+            sem_contrato_tx.append(tx)
             continue
 
         entries = registry.get(ec)
@@ -481,6 +469,9 @@ def run(
     result.comissoes = pd.DataFrame(comissoes_rows)
     result.divergencias = pd.DataFrame(divergencias_rows)
     result.notas = pd.DataFrame(notas_rows)
+    sc_rastro, sc_pend = pendencias_sem_contrato(sem_contrato_tx, competencia)
+    rastro_rows.extend(sc_rastro)
+    pendencias_cond = pendencias_cond + sc_pend
     if pendencias_cond:
         pend_df = pd.concat([pend_df, pd.DataFrame(pendencias_cond)], ignore_index=True)
     if not pend_df.empty:

@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+from tarvo import rules
 from tarvo.condicoes import Condicao
-from tarvo.money import ZERO, pct, sum_q
+from tarvo.money import ZERO, pct, q, sum_q
 
 ARQUIVO_ORBE = "orbe"
 
@@ -108,3 +109,39 @@ def divergencias_condicao(
             "quem_decide": "Financeiro + Comercial",
         })
     return divergencias, rastro, pendencias
+
+
+def pendencias_sem_contrato(transacoes: list[pd.Series], competencia: str) -> tuple[list[dict], list[dict]]:
+    """1 pendência por EC sem contrato (R3, R24.1), identificada pelo CNPJ confirmado (R30).
+
+    Valor = o que a Orbe cobrou (exposição, P10): sem taxa contratada não há comissão a apurar.
+    O id usa o CNPJ para casar com a confirmação do Comercial no mês seguinte (R18).
+    """
+    rastro, pendencias = [], []
+    por_ec: dict[str, list[pd.Series]] = {}
+    for tx in transacoes:
+        por_ec.setdefault(str(tx["cod_estabelecimento"]), []).append(tx)
+    for ec, txs in sorted(por_ec.items()):
+        cadastro = rules.EC_SEM_CONTRATO[ec]
+        chave = cadastro.get("cnpj") or f"EC{ec}"
+        pend_id = f"CK-SEMCONTRATO-{competencia}-{chave}"
+        valores = [q(tx["valor_taxa"] or ZERO) for tx in txs]
+        for tx, valor in zip(txs, valores, strict=True):
+            rastro.append({"id_saida": pend_id, "arquivo_origem": ARQUIVO_ORBE,
+                           "ref_origem": tx["id_transacao"], "valor": valor,
+                           "metadata": "pendencia_SEM_CONTRATO"})
+        total, bruto = sum_q(valores), sum_q(q(tx["valor_bruto"]) for tx in txs)
+        pendencias.append({
+            "id": pend_id,  # rastro já emitido por transação; não passa pelo laço genérico
+            "tipo": "SEM_CONTRATO",
+            "ref_origem": chave,
+            "valor_brl": total,
+            "motivo": (
+                f"{cadastro['nome']} (CNPJ {cadastro.get('cnpj') or 'não confirmado'}, EC {ec}) sem contrato "
+                f"vigente: {len(txs)} transações, bruto {bruto}, a Orbe cobrou {total}. Não fatura até o "
+                "Comercial confirmar a taxa; ao confirmar, a taxa vale desde o início e as linhas entram no "
+                f"mês seguinte (R3, R18). Fonte do CNPJ: {cadastro['fonte']}."
+            ),
+            "quem_decide": "Comercial",
+        })
+    return rastro, pendencias

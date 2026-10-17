@@ -78,7 +78,7 @@ Canal: `#duvidas-hackathon-ai` (o `#tarvo-financeiro` não foi criado; a organiz
 | P21 | **Ajuste de contestação da Ponte** (outubro em diante): linha com observação `AJUSTE REF PC-…` entra na comissão do mês em que aparece, com o sinal do relatório, dentro da nota única para a Ponte, e o rastro aponta também para a operação original. Não é tratada como spread negativo a contestar. Mês zerado/negativo → sem nota + pendência | R27 |
 | P22 | **Alerta de antecipação** só para lojista **sem histórico**: primeira transação do lojista no relatório dentro do mês e Σ antecipado no mês > Σ vendido no mês. Em setembro: só a Atlas (começou em 10/09). Comparar com as vendas do mês para todos acenderia lojistas com agenda de meses anteriores | R16.6 + R28.2 ("o critério é de vocês") |
 | P23 | **Pendência de spread negativo** traz os dois valores: `valor_brl` = spread negativo do relatório (o que aconteceu) e, no motivo, a diferença até o spread contratado (o que a Helena vai pedir à Ponte) | R28.3 |
-| P24 | **Atlas fica fora de `comissoes_por_lojista`** (não há taxa para apurar; nada pode faturar). Aparece só nas pendências, identificada pelo CNPJ 39566044000119 da aba 2025 (só identidade, não taxa), com as 57 transações no rastro | R3 + R30 |
+| P24 | **Atlas fica fora de `comissoes_por_lojista`** (não há taxa para apurar; nada pode faturar). Aparece em **uma** pendência `SEM_CONTRATO` por lojista (R24.1), identificada pelo CNPJ 39566044000119 da aba 2025 (só identidade, nunca taxa), com valor = cobrança da Orbe (R$ 7.876,05, P10) e as 57 transações no rastro. O id usa o CNPJ para casar com a confirmação do Comercial no mês seguinte (R18) | R3 + R24.1 + R30 |
 
 ### Premissas derivadas das respostas
 

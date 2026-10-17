@@ -18,8 +18,12 @@ EC_PARA_CNPJ = {
     "1038867654": "07752116000126",  # Kiwi Experience
 }
 
-# R3 + P10: Atlas (1076801732) não tem contrato vigente.
-EC_SEM_CONTRATO = {"1076801732": "ATLAS IDIOMAS"}
+# R3 + P10: EC sem contrato vigente → não fatura, 1 pendência por lojista para o Comercial (R24.1).
+# CNPJ só como identidade (R30: "só a taxa daquela aba é que não vale"); nunca lido para taxa.
+EC_SEM_CONTRATO = {
+    "1076801732": {"cnpj": "39566044000119", "nome": "Atlas Idiomas Ltda",
+                   "fonte": "R3 (não fatura) + R30 (CNPJ da aba ANTIGO 2025, só identidade)"},
+}
 
 # R6: condições comerciais fora da planilha (ex.: isenção da Casa do Estudante) ficam em
 # config/condicoes_comerciais.json, lidas por tarvo.condicoes.

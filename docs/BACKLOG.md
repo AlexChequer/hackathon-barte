@@ -38,7 +38,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 10 | Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece (teste sintético) | R27, P21 | **Helio** | Não |
 | 11 | ✅ Pendência de contestação **Orbe × Rota** (R$ 1.546,28) e **Orbe × Bridge** (R$ 29,95) por lojista, `CONTESTACAO_ORBE`, valor líquido | R1, R16.3, R24.1, R28.1 | **Alex** | Não |
 | 12 | Alerta de antecipação para lojista sem histórico (Atlas) | R16.6, R28.2, P22 | **Alex** | Não |
-| 13 | CNPJ 39566044000119 da Atlas na pendência (só identidade) | R30 | **Alex** | Não |
+| 13 | ✅ Atlas: 1 pendência `SEM_CONTRATO` por lojista (57 transações no rastro) com CNPJ 39566044000119 (só identidade) | R24.1, R30 | **Alex** | Não |
 | 14 | Atlas confirmada depois: outubro puxa as linhas pendentes de setembro | R18 | **Alex** | Não |
 | 15 | Relatório de pendências por quem decide | R1, R24.1 | **Alex** | Não |
 | 16 | Formulário na tela que grava condições comerciais e sinais resolvidos | P19, P20 | **Alex** | Não |
