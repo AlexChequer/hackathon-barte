@@ -1,45 +1,80 @@
-# Status
+# Status: 17/10, ~12h
 
-Última atualização: 17/10/2026, pós-MVP Fox AI.
+Comece aqui. Detalhes: `HIPOTESES.md` (R1–R31, P1–P24, O1), `docs/BACKLOG.md` (o que falta), `docs/MVP_V1.md` (arquitetura do motor).
 
-## Onde estamos
+## A solução em uma frase
 
-- ✅ Loaders das 6 fontes (com testes e checksums dos dados brutos), schemas de saída, CI.
-- ✅ 9 respostas do financeiro em `HIPOTESES.md` (R1–R9) e premissas P1–P15.
-- ✅ **Motores implementados**: `engines/checkout.py`, `engines/remessa.py`, `engines/extratos.py`.
-- ✅ Orquestrador + CLI que gera os **6 CSVs reais** em `saida/<competencia>/`.
-- ✅ Validação de rastro **exata em centavos**, com origem obrigatória mesmo para saída zero, IDs únicos e refs existentes.
-- ✅ Persistência SQLite de execuções e decisões em `saida/tarvo.sqlite` (idempotente; muda-dado → reavaliar).
-- ✅ Interface Streamlit (`src/tarvo/ui/app.py`) fina sobre o orquestrador.
-- ✅ Protocolo de avaliação em `docs/AVALIACAO.md` + referência manual em `tests/fixtures/referencia.yaml` + relatório em `saida/<competencia>/avaliacao.json`.
+Um comando (`python -m tarvo --dados <pasta do mês> --saida saida`) lê os 6 arquivos do mês, aplica as regras confirmadas pelo financeiro (cada uma citada em `HIPOTESES.md`), gera os 6 CSVs com rastro exato em centavos e manda para pendência, com quem decide, tudo o que não pode ser decidido por regra.
 
-## Regras já fechadas (resumo de `HIPOTESES.md`)
+**Causa raiz que atacamos (R21):** o fechamento leva 8 dias porque as regras só existem na cabeça da Helena (condições do comercial, quem é quem entre nomes e CNPJs, o que se contesta) e são aplicadas à mão (3 dias de checkout, 2 de remessa, 2 de extratos). A solução torna cada regra explícita, versionada e com fonte, e o que é exceção vira pendência com dono.
 
-| Tema | Regra | Fonte |
+## Números de set/2026 (branch `feat/condicoes-comerciais`)
+
+| Saída | Linhas | Destaques |
 |---|---|---|
-| Comissão checkout | Σ bruto × taxa **contratada**, linha a linha com ROUND_HALF_UP (vendas + antecipações − estornos − reversões) | R1, R2, R4, R8 |
-| Vigência | Pela data da venda. Estorno usa a taxa da venda original e abate no mês do estorno | R2, P3 |
-| ECs | 1043300981 = Novo Horizonte; 1043396662 = Horizonte Viagens; 1038867654 = Kiwi. **Atlas não fatura, pendência Comercial, sem taxa inventada e sem comissão zero fictícia** | R3, P10 |
-| Casa do Estudante | Checkout taxa 0% de **01/09 a 31/12**. Estorno de venda de agosto usa a taxa histórica (sem isenção) | R6, P6 |
-| Rota Global | +0,5 p.p. em crédito a partir de 12/09 é divergência; débito/Pix seguem a comparação por modalidade sem regra artificial | R6, P9 |
-| Divergência checkout | Taxa aplicada ≠ contratada → `round(bruto × (aplicada − contratada))`. Centavo de truncamento não é divergência | R1, R8, P8 |
-| Notas checkout | 1 por CNPJ/competência com comissão > 0. Zero explicado = sem nota sem alarme; negativo ou inesperado → pendência | R4, P11 |
-| Comissão remessa | 50% × Spread R$ realizado, por operação, com ROUND_HALF_UP. Duplicada conta 1×. Quatro negativos de setembro fora (R5+P12), ressalva entra normal. Competência = contratação | R5, R8 |
-| Divergência remessa | (spread_pct − contratado) × PTAX × ME, valor cheio, por operação. Vazio = 1,5%; "padrão" literal também. Texto inválido no campo gera pendência técnica, não default silencioso. Tolerância 0,01 p.p. | R5, R7, P5, P7 |
-| Nota remessa | **1 nota** para a Ponte Câmbio (75374179000146) com a soma das participações por operação. Diferença contra o total declarado da Ponte vira pendência, não entra na nota | R4, P14 |
-| Arredondamento | ROUND_HALF_UP (meio centavo longe de zero, inclusive no negativo) **por linha/operação**, depois soma | R8 |
-| Extratos | `conta_codigo` = **contrapartida** (apenas contas analíticas que aceitam lançamento). Baixa de passivos/recebível para folha, tributos de 08 e repasse Ponte 08/2026. Demais despesas → direto no mês. Sem clareza → premissa escrita e/ou pendência | R6, R9 |
+| `comissoes_por_lojista` | 35 | Checkout R$ 207.039,73 (21 lojistas) · Remessa R$ 39.543,45 (14) |
+| `divergencias_taxa` | 233 | `CK-DIV` 92 (Rota, Bridge: cobrar da Orbe R$ 1.576,23) · `CK-COND` 118 (Casa: devolver, fora da cobrança) · `RM-DIV` 23 (Mundo Aberto R$ 1.418,85) |
+| `notas_a_emitir` | 21 | 20 checkout + 1 Ponte Câmbio (R$ 39.543,45) |
+| `lancamentos_classificados` | 184 | 184/184 por regra, só contas analíticas |
+| `pendencias` | 67 | Atlas 57 (Comercial) · Casa devolução 1 · Casa nota negativa 1 · negativos da Ponte 4 · conferir TED 1 · extratos 3 |
+| `rastro` | 4.710 | Soma exata por `id_saida` |
 
-## Mudanças de contexto neste MVP
+Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementação independente do André bate centavo a centavo nas 21 comissões de checkout.
 
-- CLAUDE.md: arredondamento é por linha, não "só na saída"; distinção entre pendência (falta info) e premissa (decisão delegada).
-- HIPOTESES.md R6: impacto corrigido (vigência da isenção, estornos de agosto, Casa `TX88445133` com comissão −5,50 sem divergência; totais devem vir do motor, não hard-coded).
-- CONTEXTO.md e MAPA_DADOS.md: respostas R1–R9 marcadas como resolvidas; mantidas as descrições das armadilhas.
-- PERGUNTAS_FINANCEIRO.md: fila só com perguntas realmente abertas; R8 e R9 marcadas como respondidas.
-- Removida a asserção de que "cobrança da Orbe menos comissão contratual = soma das divergências". Truncamento ≠ divergência; cada saída fecha com seu rastro.
+## Regras do financeiro × motor
 
-## Perguntas ainda materialmente abertas
+| Regra | Situação |
+|---|---|
+| R1/R8/R14 comissão pela contratada, arredondamento por linha | ✅ |
+| R2/R29/R31 estorno pela taxa da venda original, no mês do estorno | ✅ |
+| R3/R30 mapa de ECs por CNPJ; Atlas não fatura | ✅ Atlas fora de comissões (P24) · ❌ CNPJ 39566044000119 (aba 2025) na pendência |
+| R4 1 nota por lojista; ≤ 0 sem nota + pendência; 1 nota Ponte | ✅ |
+| R5/R15 remessa 50% do realizado; negativo fora; duplicata 1×; padrão 1,5% | ✅ negativos por regra geral, sem ids fixos |
+| R6/R16.1/R22/R28.1 Casa = concessão fora do contrato → devolução, fora da cobrança da Orbe | ✅ `CK-COND` + pendência; fonte única `config/condicoes_comerciais.json` |
+| R6 extratos: PIX sem id, devolução, transferência em trânsito | ✅ trânsito por cruzamento dos bancos, sem data fixa |
+| R7/P7 divergência de remessa cheia, tolerância 0,01 p.p. | ✅ |
+| R9/R19/R25 contrapartida; provisão baixa no mês seguinte | ✅ |
+| R10/R12/R24.1 pendência de contestação por contraparte e lojista (Rota, Bridge, Mundo Aberto, duplicata) | ❌ só a Casa está agregada |
+| R11/R12 `quem_decide` das pendências da Ponte = Financeiro | ⚠️ negativos ok; `RM-CONTEST` e duplicata ainda "Ponte Câmbio" |
+| R16.6/R28.2 alerta de antecipação só para lojista sem histórico (P22) | ❌ |
+| R18 Atlas confirmada depois: outubro puxa as linhas de setembro | ❌ |
+| R24.3 venda acima de 12x → pendência | ✅ (`SEM_TAXA_CONTRATADA`) |
+| R26 `saida/` com os 6 CSVs de setembro **na raiz** | ❌ hoje vai para `saida/2026-09/exec_*` |
+| R27 ajuste de contestação da Ponte no mês seguinte (P21) | ❌ sem caso em setembro |
+| R28.3 negativo com os dois valores (P23) | ❌ |
+| O1 um comando, nada fixo para setembro, README com chave | ✅ código · ❌ README |
+| P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
-- **Divergência a menor**: nenhum caso em setembro. Preventivo; motor já reporta com sinal, basta Helena validar.
-- **Quem decide por tipo de pendência**: temos defaults (Financeiro, Comercial, Ponte). Confirmar para a próxima rodada.
-- Atlas e PIX R$ 7.350 (L50): dependem de informação externa; motor segue abrindo pendência enquanto não chegar.
+## Branches
+
+| Branch | Dono | Estado |
+|---|---|---|
+| `main` | todos | MVP v1 (Helio) + generalização para qualquer mês + R3 por CNPJ |
+| `feat/condicoes-comerciais` | Alex | Mergeada no `main` às ~12h15 (condições comerciais, detector de sinais, R26–R31) |
+| `solucao_minimo` | André | Implementação independente do checkout que valida o `main`. **Não mergear como está**: apaga `src/tarvo/`. 15 commits atrás do `main` |
+| `tarvo-mvp-implementation-7e6965eb` | Helio | Mergeada (PR #1) e apagada |
+
+## Quem fez o quê
+
+- **Alex**: repo, loaders e testes de integridade dos dados; mapa das armadilhas; perguntas ao financeiro e registro R1–R31; generalização para qualquer mês; R3 por CNPJ; condições comerciais (Casa); detector de sinais (Laya); backlog e status.
+- **Helio**: MVP v1 de ponta a ponta (3 motores, orquestrador, rastro exato, SQLite de execuções e decisões, avaliação contra referência manual, Streamlit) e `MVP_V1.md`. Perguntas R8 (arredondamento) e R9 (plano de contas).
+- **André**: implementação independente do checkout (`solucao_minimo`) que confirmou os números do `main`; premissas M1–M4; pergunta R14.
+
+## Trajetória
+
+1. **16/10 noite**: setup, leitura dos dados, primeiras armadilhas (truncamento da Orbe, duplicata, negativos, ECs sem planilha) e perguntas R1–R9. Helio entrega o MVP v1 às 22h20.
+2. **17/10 manhã**: André valida o checkout por fora. Tiramos tudo que era fixo de setembro (O1). As respostas R10–R31 mudam três coisas: a Casa é concessão fora do contrato (devolução nossa, não cobrança da Orbe), pendências passam a ser por contraparte e lojista, e `saida/` vai na raiz.
+3. **Erros da IA registrados** (`PROMPTS/MOMENTOS.md`): L10 × L9; "a Orbe usa a tabela antiga"; loader sem comentários de célula; fórmula de divergência errada. Novo candidato: a instrução longa no Laya baixou o acerto para 8/15; medimos e trocamos por um comitê de 3 instruções curtas.
+
+## Próximos passos
+
+Divisão por pessoa (gaps numerados e donos): `docs/BACKLOG.md`, seção "Divisão de 17/10".
+
+### Ordem geral
+
+1. Mergear `feat/condicoes-comerciais`.
+2. `saida/` na raiz com os 6 CSVs + README (um comando, `.env`, Laya opcional). **Bloqueia a entrega.**
+3. Pendências por contraparte e lojista (Rota, Bridge, Mundo Aberto, duplicata), `quem_decide` = Financeiro, negativo com dois valores.
+4. Alerta de antecipação (P22) e CNPJ da Atlas na pendência.
+5. Relatório de pendências + formulário na tela que grava condições.
+6. 17h: congelar; MOMENTOS, export dos prompts, pitch.

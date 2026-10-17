@@ -20,6 +20,31 @@ Checkpoints: **uma pessoa do time** manda por mensagem privada para o Manuel Fre
 
 Dúvidas: no canal, com `[Financeiro]` ou `[Logística]` e o nome do time, uma por thread.
 
+## Divisão de 17/10, ~12h15 (gaps do MVP × dono)
+
+Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financeiro × motor". Uma branch por pessoa, a partir do `main`: `feat/checkout-pendencias` (Alex), `feat/remessa-pendencias` (Helio), `feat/entrega` (André). Cada um mexe só nos seus arquivos.
+
+| # | Gap | Regra | Dono | Bloqueia entrega? |
+|---|---|---|---|---|
+| 1 | Gravar os 6 CSVs de setembro **na raiz** de `saida/` e commitar (hoje vão para `saida/2026-09/exec_*`, e `saida/` está no `.gitignore`) | R26, O1 | **André** | **Sim** |
+| 2 | README: um comando, onde pôr os arquivos, `.env`, Laya experimental | O1 | **André** | **Sim** |
+| 3 | Perguntar à organização: colunas extras (`rastro.metadata`, `lancamentos.motivo`) e L9 × L10 do Aurora | P1 | **André** | Talvez |
+| 4 | Extratos: `confianca` do PIX L50 < 1; motivo "remessa de outubro" no `MRD2026090425` | R6, R16.5 | **André** | Não |
+| 5 | Provisão de folha/impostos de setembro (aguarda resposta à Datarmos) | R19 | **André** | Não |
+| 6 | Pendência de contestação **Ponte × Mundo Aberto** por lojista, 23 operações no rastro | R10, R12, R24.1 | **Helio** | Não |
+| 7 | Duplicata `PC-0926-0162` como pendência (Ponte corrigir o relatório) | R12 | **Helio** | Não |
+| 8 | `quem_decide` = Financeiro em `RM-CONTEST`, duplicata e status desconhecido | R11, R12 | **Helio** | Não |
+| 9 | Negativo com dois valores: spread do relatório + diferença até o contrato | R28.3, P23 | **Helio** | Não |
+| 10 | Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece (teste sintético) | R27, P21 | **Helio** | Não |
+| 11 | Pendência de contestação **Orbe × Rota** e **Orbe × Bridge** por lojista | R24.1, R28.1 | **Alex** | Não |
+| 12 | Alerta de antecipação para lojista sem histórico (Atlas) | R16.6, R28.2, P22 | **Alex** | Não |
+| 13 | CNPJ 39566044000119 da Atlas na pendência (só identidade) | R30 | **Alex** | Não |
+| 14 | Atlas confirmada depois: outubro puxa as linhas pendentes de setembro | R18 | **Alex** | Não |
+| 15 | Relatório de pendências por quem decide | R1, R24.1 | **Alex** | Não |
+| 16 | Formulário na tela que grava condições comerciais e sinais resolvidos | P19, P20 | **Alex** | Não |
+
+A partir das 17h: André confere a saída final contra a `solucao_minimo` (validação independente; essa branch **não** é mergeada).
+
 Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relatório de pendências
 
 ## Transversal (bloqueia a entrega, O1)
@@ -35,7 +60,10 @@ Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relat�
 
 ## Checkout
 
-- [ ] 🟢 📋 **Casa do Estudante fora de `divergencias_taxa`** (R16.1): vira pendência de devolução ao lojista (Financeiro + Comercial), com o valor (R$ 15,4 mil). Não é cobrança da Orbe.
+- [x] 📋 **Casa do Estudante como condição comercial** (P19): 118 linhas `CK-COND-*` + 1 pendência `CONDICAO_NAO_INFORMADA_ORBE` (R$ 15.397,42, Financeiro + Comercial). A cobrar da Orbe: só `CK-DIV-*` (R$ 1.576,23).
+- [x] 📋 **Detector de sinais** (`tarvo.sinais`): obs + comentários da planilha → palavras-chave **ou** Laya `noul` (open source, local, `laya==0.4.8`, modelo `multilingual`, corte 0,5, só sim/não). Sinal sem condição registrada nem resolução → pendência `CONDICAO_ESPECIAL_A_CONFIRMAR` (Comercial, valor 0, rastro na linha da planilha). Sem o pacote ou com `TARVO_CLASSIFICADOR=nenhum`: só palavras-chave. Em set/2026 marca Bridge L6, Casa L13 (×2) e Mundo Aberto L15, todos AMBOS; todos cobertos (COND-0001 ou `sinais_resolvidos`) → 0 pendências novas.
+- [ ] 🟢 **Tela: responder pendência de condição** grava em `config/condicoes_comerciais.json` (campos estruturados + texto; classificador binário decide se o texto é útil para guardar).
+- [ ] 🟢 Condição ativa mas planilha/Orbe ainda na taxa antiga → pendência "atualizar planilha e avisar a Orbe" (já sai no motivo); alerta de vencimento (≤ 30 dias).
 
 - [x] ~~Divergência vira pendência?~~ R16: divergência de contrato fica em `divergencias_taxa` (Helena decide caso a caso); **Casa é outra natureza** (item abaixo).
 - [x] **Estorno de venda divergente** (R16.3: venda e estorno se anulam, cobra só o líquido). Já é o que o motor faz.
