@@ -376,3 +376,13 @@ def test_os_6_csvs_tambem_vao_para_a_raiz_de_saida(tmp_path):
         assert raiz.exists(), nome
         assert raiz.read_bytes() == execucao.read_bytes()
     assert sorted(p.name for p in tmp_path.glob("*.csv")) == sorted(SAIDAS)
+
+
+def test_lancamento_com_pendencia_sai_com_confianca_provisoria(res_extratos):
+    """Gap 4: a conta vem da regra, mas fica provisória até a pendência ser resolvida (R6)."""
+    lanc = res_extratos.lancamentos.set_index("ref_origem")
+    for ref in ("L50", "L65", "L92"):
+        assert lanc.loc[ref, "confianca"] == Decimal("0.50"), ref
+    com_pendencia = set(res_extratos.pendencias["ref_origem"])
+    sem = res_extratos.lancamentos[~res_extratos.lancamentos["ref_origem"].isin(com_pendencia)]
+    assert set(sem["confianca"]) == {Decimal("1.00")}
