@@ -80,3 +80,35 @@ def test_api_registrar_condicao_e_refechar(cliente, config):
     assert r.status_code == 201, r.text
     assert json.loads(config.read_text())["condicoes"][-1]["cnpj"] == "95927868000148"
     assert cliente.post("/api/condicoes", json={"cnpj": "1"}).status_code == 422
+
+
+def test_api_lista_os_arquivos_esperados(cliente):
+    esperados = cliente.get("/api/arquivos-esperados").json()
+    obrigatorios = [a for a in esperados if a["obrigatorio"]]
+    assert len(obrigatorios) == 6
+    assert any(not a["obrigatorio"] and "ajustes" in a["padrao"] for a in esperados)
+
+
+def _arquivos(nomes):
+    return [("arquivos", (DATA.joinpath(n).name, DATA.joinpath(n).read_bytes())) for n in nomes]
+
+
+def test_upload_sem_um_obrigatorio_e_recusado_com_o_nome_que_falta(cliente):
+    nomes = [f.name for f in DATA.iterdir() if not f.name.startswith(("03_", "00_"))]
+    r = cliente.post("/api/arquivos", files=_arquivos(nomes))
+    assert r.status_code == 422
+    assert "Ponte" in r.json()["detail"] and "faltando" in r.json()["detail"]
+
+
+def test_upload_com_obrigatorio_duplicado_e_recusado(cliente):
+    nomes = [f.name for f in DATA.iterdir() if not f.name.startswith("00_")]
+    arquivos = _arquivos(nomes) + [("arquivos", ("01_orbe_relatorio_comissoes_out2026.csv", b"x"))]
+    r = cliente.post("/api/arquivos", files=arquivos)
+    assert r.status_code == 422 and "mais de um" in r.json()["detail"]
+
+
+def test_upload_completo_fecha_o_mes(cliente):
+    nomes = [f.name for f in DATA.iterdir() if not f.name.startswith("00_")]
+    r = cliente.post("/api/arquivos", files=_arquivos(nomes))
+    assert r.status_code == 200, r.text
+    assert r.json()["totais"]["comissao_checkout"] == "203735.34"

@@ -70,7 +70,7 @@ export const api = {
     pedir<{ condicao: Condicao; fechamento: Fechamento }>("/api/condicoes", json(c)),
   resolverSinal: (s: { cnpj: string; texto: string; fonte: string; registrado_por: string }) =>
     pedir<{ fechamento: Fechamento }>("/api/sinais-resolvidos", json(s)),
-  enviarArquivos: (arquivos: FileList) => {
+  enviarArquivos: (arquivos: FileList | File[]) => {
     const form = new FormData();
     Array.from(arquivos).forEach((f) => form.append("arquivos", f));
     return pedir<Fechamento>("/api/arquivos", { method: "POST", body: form });

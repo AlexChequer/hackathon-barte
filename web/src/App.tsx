@@ -1,10 +1,11 @@
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import { Check, FileUp, RefreshCw, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, type Fechamento, type SinalAberto } from "./api";
 import { Condicoes } from "./components/Condicoes";
 import { Pendencias } from "./components/Pendencias";
 import { Rastro, type AlvoRastro } from "./components/Rastro";
+import { Upload } from "./components/Upload";
 import { Divergencias, Lancamentos, Numeros } from "./components/Tabelas";
 import { RastroContext } from "./components/Valor";
 import { competencia as nomeCompetencia } from "./format";
@@ -20,7 +21,7 @@ export default function App() {
   const [alvo, setAlvo] = useState<AlvoRastro | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [sinalForm, setSinalForm] = useState<SinalAberto | null>(null);
-  const arquivoRef = useRef<HTMLInputElement>(null);
+  const [uploadAberto, setUploadAberto] = useState(false);
 
   const aplicar = useCallback(async (novo: Fechamento) => {
     setF(novo);
@@ -79,15 +80,8 @@ export default function App() {
               </div>
               {f && <Status f={f} />}
               <div className="flex gap-2">
-                <input
-                  ref={arquivoRef}
-                  type="file"
-                  multiple
-                  hidden
-                  onChange={(e) => e.target.files?.length && executar("Lendo os arquivos enviados…", () => api.enviarArquivos(e.target.files!))}
-                />
                 <button
-                  onClick={() => arquivoRef.current?.click()}
+                  onClick={() => setUploadAberto(true)}
                   className="flex items-center gap-1.5 rounded-md border border-linha-forte bg-folha px-3 py-1.5 text-sm font-medium hover:bg-papel"
                 >
                   <FileUp size={15} /> Enviar arquivos do mês
@@ -191,6 +185,16 @@ export default function App() {
           </div>
 
           <Rastro alvo={alvo} aoFechar={() => setAlvo(null)} />
+          <Upload
+            aberto={uploadAberto}
+            aoFechar={() => setUploadAberto(false)}
+            aoEnviar={async (arquivos) => {
+              const novo = await api.enviarArquivos(arquivos); // erro sobe para o painel de upload
+              await aplicar(novo);
+              setUploadAberto(false);
+              setAviso(`Mês fechado com os arquivos enviados: ${novo.tabelas.pendencias.length} pendências.`);
+            }}
+          />
 
           <AnimatePresence>
             {aviso && (

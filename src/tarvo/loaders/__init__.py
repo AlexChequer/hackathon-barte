@@ -5,6 +5,7 @@ Cada loader devolve um DataFrame novo com colunas normalizadas e uma coluna de r
 Interpretação (vigência, 'padrão', duplicadas, spread negativo...) fica no motor, não aqui.
 """
 
+from fnmatch import fnmatch
 from pathlib import Path
 
 import pandas as pd
@@ -29,6 +30,43 @@ FILES = {
 OPCIONAIS = {
     "orbe_ajustes": "*_orbe_ajustes_*.csv",
 }
+
+
+# Lista única dos arquivos do mês (o que a tela pede e o que o upload confere).
+ESPERADOS = [
+    {"chave": "orbe", "padrao": FILES["orbe"], "obrigatorio": True,
+     "nome": "Relatório da Orbe", "descricao": "uma linha por transação (CSV)"},
+    {"chave": "taxas", "padrao": FILES["taxas"], "obrigatorio": True,
+     "nome": "Tabela de taxas contratadas", "descricao": "planilha do financeiro (XLSX)"},
+    {"chave": "ponte", "padrao": FILES["ponte"], "obrigatorio": True,
+     "nome": "E-mail da Ponte Câmbio", "descricao": "relatório de remessas em anexo (EML)"},
+    {"chave": "plano", "padrao": FILES["plano"], "obrigatorio": True,
+     "nome": "Plano de contas", "descricao": "exportado do ERP Fênix (CSV)"},
+    {"chave": "aurora", "padrao": FILES["aurora"], "obrigatorio": True,
+     "nome": "Extrato Aurora", "descricao": "conta principal (CSV)"},
+    {"chave": "meridiano", "padrao": FILES["meridiano"], "obrigatorio": True,
+     "nome": "Extrato Meridiano", "descricao": "conta de remessas (OFX)"},
+    {"chave": "orbe_ajustes", "padrao": OPCIONAIS["orbe_ajustes"], "obrigatorio": False,
+     "nome": "Ajustes tardios da Orbe",
+     "descricao": "se a Orbe mandar depois do relatório; zero ou mais (CSV)"},
+]
+IGNORADOS = ["00_LEIA-ME*"]
+
+
+def validar_lote(nomes: list[str]) -> list[str]:
+    """Problemas de um lote de upload: obrigatório faltando ou repetido, arquivo desconhecido."""
+    problemas = []
+    for nome in nomes:
+        conhecido = any(fnmatch(nome, e["padrao"]) for e in ESPERADOS)
+        if not conhecido and not any(fnmatch(nome, p) for p in IGNORADOS):
+            problemas.append(f"{nome}: não é um arquivo do fechamento")
+    for e in (e for e in ESPERADOS if e["obrigatorio"]):
+        achados = [n for n in nomes if fnmatch(n, e["padrao"])]
+        if not achados:
+            problemas.append(f"faltando: {e['nome']} ({e['padrao']})")
+        elif len(achados) > 1:
+            problemas.append(f"mais de um {e['nome']}: {', '.join(achados)}")
+    return problemas
 
 
 def find_file(data_dir: Path, key: str) -> Path:

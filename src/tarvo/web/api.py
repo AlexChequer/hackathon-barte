@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from tarvo import condicoes as cond_mod
 from tarvo import rules, sinais
 from tarvo.avaliacao import avaliar_e_persistir
-from tarvo.loaders import FILES, OPCIONAIS, load_all
+from tarvo.loaders import ESPERADOS, FILES, OPCIONAIS, load_all, validar_lote
 from tarvo.orquestrador import ClosingResult, run_closing
 
 log = logging.getLogger("tarvo.web")
@@ -177,14 +177,19 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
                  "campo": m.sinal.campo, "texto": m.sinal.texto, "metodo": m.metodo}
                 for m, pid in sinais.abertos(taxas, r.competencia, conds, resolvidos)]
 
+    @app.get("/api/arquivos-esperados")
+    def get_arquivos_esperados() -> list[dict]:
+        return ESPERADOS
+
     @app.post("/api/arquivos")
     async def post_arquivos(arquivos: Annotated[list[UploadFile], File()]) -> dict:
+        nomes = [Path(a.filename or "").name for a in arquivos]
+        problemas = validar_lote(nomes)
+        if problemas:
+            raise HTTPException(422, "Envie exatamente os 6 arquivos do mês. " + "; ".join(problemas))
         destino = app.state.saida / "entradas" / dt.datetime.now().strftime("%Y%m%d_%H%M%S")
         destino.mkdir(parents=True, exist_ok=True)
-        for arquivo in arquivos:
-            nome = Path(arquivo.filename or "").name
-            if not any(fnmatch.fnmatch(nome, p) for p in PADROES_ACEITOS):
-                raise HTTPException(422, f"Arquivo {nome!r} não é do data pack. Esperado: {PADROES_ACEITOS}")
+        for arquivo, nome in zip(arquivos, nomes, strict=True):
             conteudo = await arquivo.read()
             if len(conteudo) > LIMITE_UPLOAD:
                 raise HTTPException(413, f"{nome} passa de 20 MB")
