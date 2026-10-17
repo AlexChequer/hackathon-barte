@@ -1,0 +1,20 @@
+{
+  "_comentario": "Conjunto rotulado para medir o detector de sinais (1 = indica condição comercial que pode mudar a taxa). Os 8 primeiros textos de cada classe incluem os reais de set/2026; os demais são controles escritos pelo time.",
+  "textos": {
+    "cliente estratégico - ver c/ comercial": 1,
+    "conversar com Diego (comercial) sobre condição especial": 1,
+    "renegociado - ver linha de baixo": 1,
+    "só mudou o crédito à vista": 1,
+    "spread negociado em jul/26": 1,
+    "desconto de 30% até dezembro": 1,
+    "isento de MDR no lançamento": 1,
+    "aditivo assinado em 10/09": 1,
+    "EC pendente": 0,
+    "só remessa": 0,
+    "INATIVO desde jul/26": 0,
+    "lojista pediu segunda via do boleto": 0,
+    "trocar conta bancária para repasse": 0,
+    "contato: Maria (financeiro)": 0,
+    "CNPJ conferido na Receita": 0
+  }
+}

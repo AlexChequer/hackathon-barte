@@ -26,12 +26,22 @@ from tarvo.engines import EngineResult
 log = logging.getLogger("tarvo.sinais")
 
 PALAVRAS_CHAVE = re.compile(
-    r"comercial|condi[cç][aã]o|especial|negocia|isen[cçt]|zerad|desconto|estrat[eé]gic|acordo|promo",
+    r"comercial|condi[cç][aã]o|especial|negocia|isen[cçt]|zerad|desconto|estrat[eé]gic|acordo|promo"
+    r"|aditivo|vig[eê]ncia|cortesia",
     re.IGNORECASE,
 )
-# Instrução testada nos textos reais de set/2026 (corte 0,5): ver docs/MAPA_DADOS.md.
-PERGUNTA_LAYA = ("A anotação fala de negociação, acordo comercial, condição especial, desconto ou "
-                 "isenção de taxa?")
+# Comitê de 3 instruções curtas, voto majoritário (guardrail). Medido em
+# tests/fixtures/sinais_rotulados.json: instrução única longa = 8/15; comitê + palavras-chave = 13/15.
+CONTEXTO = ("Anotação de uma planilha de taxas que uma subadquirente cobra de lojistas (MDR, antecipação, "
+            "spread). ")
+PERGUNTAS_LAYA = (
+    "A anotação fala de negociação, acordo comercial, condição especial, desconto ou isenção de taxa?",
+    "Esta anotação diz que a taxa deste lojista foi negociada, mudou, tem desconto, isenção ou condição "
+    "especial com o comercial?",
+    CONTEXTO + "Responda sim para condição especial, negociação, renegociação, desconto, isenção, tarifa "
+    "zerada, aditivo ou nova vigência de taxa. Responda não para assunto cadastral ou operacional: EC, "
+    "inatividade, uso só de remessa, conta bancária, contato, boleto, CNPJ.",
+)
 LAYA_VERSAO = "0.4.8"
 LAYA_MODELO = "multilingual"
 CORTE = 0.5
@@ -59,7 +69,7 @@ class Classificador(Protocol):
 
 
 class LayaClassificador:
-    """Laya `noul` (probabilidade de sim) com corte fixo. Sem texto gerado, sem motivo."""
+    """Laya `noul` (probabilidade de sim), 3 instruções, voto majoritário. Sem texto gerado, sem motivo."""
 
     nome = f"laya-{LAYA_MODELO}-{LAYA_VERSAO}"
 
@@ -69,9 +79,14 @@ class LayaClassificador:
         self._router = Router(default=LAYA_MODELO)
 
     def relevantes(self, textos: list[str]) -> list[bool]:
-        pergunta = {"relevante": {"type": "noul", "instructions": PERGUNTA_LAYA}}
-        respostas = [self._router.predict({"nota": t}, pergunta, model=LAYA_MODELO) for t in textos]
-        return [r["answers"]["relevante"]["noul"] >= CORTE for r in respostas]
+        perguntas = {f"q{i}": {"type": "noul", "instructions": p} for i, p in enumerate(PERGUNTAS_LAYA)}
+        votos_minimos = len(PERGUNTAS_LAYA) // 2 + 1
+        resultado = []
+        for texto in textos:
+            respostas = self._router.predict({"anotacao": texto}, perguntas, model=LAYA_MODELO)["answers"]
+            votos = sum(r["noul"] >= CORTE for r in respostas.values())
+            resultado.append(votos >= votos_minimos)
+        return resultado
 
 
 def classificador_padrao() -> Classificador | None:
