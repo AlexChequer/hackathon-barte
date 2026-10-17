@@ -1,10 +1,11 @@
 """Detector de sinais de condição comercial escondida em texto livre da planilha de taxas.
 
 A isenção da Casa do Estudante só aparecia em obs e comentário de célula (R6). Todo fechamento
-lê esses textos: palavras-chave (sempre) OU classificador binário Laya (open source, local, só
-sim/não). Sinal sem condição registrada nem resolução anterior vira pendência para o Comercial
-(R20, R24.1: cadastro e contrato quem decide é o comercial). O motor não muda nenhuma taxa por
-causa de um sinal: só pede a confirmação.
+lê esses textos por palavras-chave. O classificador binário Laya (open source, local, só sim/não)
+fica como opção experimental, desligada por padrão porque não melhorou o acerto
+(`classificador_padrao`). Sinal sem condição registrada nem resolução anterior vira pendência
+para o Comercial (R20, R24.1: cadastro e contrato quem decide é o comercial). O motor não muda
+nenhuma taxa por causa de um sinal: só pede a confirmação.
 """
 
 from __future__ import annotations
@@ -90,8 +91,12 @@ class LayaClassificador:
 
 
 def classificador_padrao() -> Classificador | None:
-    """`TARVO_CLASSIFICADOR=laya` (padrão) ou `nenhum`. Sem o pacote, segue só com palavras-chave."""
-    escolha = os.environ.get("TARVO_CLASSIFICADOR", "laya").strip().lower()
+    """`TARVO_CLASSIFICADOR=nenhum` (padrão) ou `laya` (experimental).
+
+    Padrão desligado: no conjunto rotulado, palavras-chave sozinhas acertam 14/15 e a união com o
+    Laya 13/15 (o Laya não recupera nenhum caso e acrescenta um falso positivo). Ver MOMENTOS, momento 5.
+    """
+    escolha = os.environ.get("TARVO_CLASSIFICADOR", "nenhum").strip().lower()
     if escolha == "nenhum":
         return None
     try:

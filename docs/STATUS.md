@@ -43,16 +43,16 @@ Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R27 ajuste de contestação da Ponte no mês seguinte (P21) | ❌ sem caso em setembro |
 | R28.3 negativo com os dois valores (P23) | ❌ |
 | O1 um comando, nada fixo para setembro, README com chave | ✅ código · ❌ README |
-| P20 sinais de condição especial na planilha | ✅ palavras-chave + Laya local (comitê de 3) |
+| P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
 ## Branches
 
 | Branch | Dono | Estado |
 |---|---|---|
 | `main` | todos | MVP v1 (Helio) + generalização para qualquer mês + R3 por CNPJ |
-| `feat/condicoes-comerciais` | Alex | +5 commits: condições comerciais (Casa), detector de sinais com Laya, R26–R31, este status. **Pronta para merge** |
+| `feat/condicoes-comerciais` | Alex | Mergeada no `main` às ~12h15 (condições comerciais, detector de sinais, R26–R31) |
 | `solucao_minimo` | André | Implementação independente do checkout que valida o `main`. **Não mergear como está**: apaga `src/tarvo/`. 15 commits atrás do `main` |
-| `tarvo-mvp-implementation-7e6965eb` | Helio | Já mergeada (PR #1). Pode apagar |
+| `tarvo-mvp-implementation-7e6965eb` | Helio | Mergeada (PR #1) e apagada |
 
 ## Quem fez o quê
 
@@ -66,7 +66,11 @@ Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 2. **17/10 manhã**: André valida o checkout por fora. Tiramos tudo que era fixo de setembro (O1). As respostas R10–R31 mudam três coisas: a Casa é concessão fora do contrato (devolução nossa, não cobrança da Orbe), pendências passam a ser por contraparte e lojista, e `saida/` vai na raiz.
 3. **Erros da IA registrados** (`PROMPTS/MOMENTOS.md`): L10 × L9; "a Orbe usa a tabela antiga"; loader sem comentários de célula; fórmula de divergência errada. Novo candidato: a instrução longa no Laya baixou o acerto para 8/15; medimos e trocamos por um comitê de 3 instruções curtas.
 
-## Próximos passos (ordem)
+## Próximos passos
+
+Divisão por pessoa (gaps numerados e donos): `docs/BACKLOG.md`, seção "Divisão de 17/10".
+
+### Ordem geral
 
 1. Mergear `feat/condicoes-comerciais`.
 2. `saida/` na raiz com os 6 CSVs + README (um comando, `.env`, Laya opcional). **Bloqueia a entrega.**
