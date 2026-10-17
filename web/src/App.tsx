@@ -1,27 +1,26 @@
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
-import { Check, FileUp, RefreshCw, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api, type Fechamento, type SinalAberto } from "./api";
 import { Condicoes } from "./components/Condicoes";
 import { Pendencias } from "./components/Pendencias";
 import { Rastro, type AlvoRastro } from "./components/Rastro";
-import { Upload } from "./components/Upload";
+import { Arquivos } from "./components/Upload";
 import { Divergencias, Lancamentos, Numeros, Rastro as RastroTabela } from "./components/Tabelas";
 import { RastroContext } from "./components/Valor";
-import { ARQUIVO, FRENTE, competencia as nomeCompetencia } from "./format";
+import { ARQUIVO, FRENTE } from "./format";
 
-type Tela = "pendencias" | "numeros" | "divergencias" | "lancamentos" | "rastro" | "condicoes";
+type Tela = "arquivos" | "pendencias" | "numeros" | "divergencias" | "lancamentos" | "rastro" | "condicoes";
 
 export default function App() {
   const [f, setF] = useState<Fechamento | null>(null);
   const [sinais, setSinais] = useState<SinalAberto[]>([]);
   const [erro, setErro] = useState<string | null>(null);
-  const [ocupado, setOcupado] = useState<string | null>("Fechando o mês…");
-  const [tela, setTela] = useState<Tela>("pendencias");
+  const [ocupado, setOcupado] = useState<string | null>("Carregando o fechamento…");
+  const [tela, setTela] = useState<Tela>("arquivos");
   const [alvo, setAlvo] = useState<AlvoRastro | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [sinalForm, setSinalForm] = useState<SinalAberto | null>(null);
-  const [uploadAberto, setUploadAberto] = useState(false);
 
   const aplicar = useCallback(async (novo: Fechamento) => {
     setF(novo);
@@ -44,7 +43,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    executar("Fechando o mês…", api.fechamento);
+    executar("Carregando o fechamento…", api.fechamento);
   }, [executar]);
 
   useEffect(() => {
@@ -55,6 +54,7 @@ export default function App() {
 
   const pend = f?.tabelas.pendencias ?? [];
   const nav: [Tela, string, number | null][] = [
+    ["arquivos", "Arquivos e fechamento", null],
     ["pendencias", "Pendências", pend.length],
     ["numeros", "Comissões e notas", null],
     ["divergencias", "Divergências", f?.tabelas.divergencias.length ?? null],
@@ -68,38 +68,13 @@ export default function App() {
       <RastroContext.Provider value={setAlvo}>
         <div className="min-h-screen overflow-x-hidden">
           <header className="sticky top-0 z-20 border-b border-linha bg-papel/95 backdrop-blur-sm">
-            <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4">
-              <div className="mr-auto">
-                <h1 className="text-[17px] font-semibold tracking-tight">
-                  Fechamento {f ? <span className="text-tinta-2 font-normal">de {nomeCompetencia(f.competencia)}</span> : null}
-                </h1>
-                {f && (
-                  <p className="mt-0.5 text-xs text-tinta-3">
-                    {f.arquivos.length} arquivos lidos · regras {f.regras_versao} · execução #{f.execucao_id} em {f.duracao_s?.toFixed(2)} s
-                  </p>
-                )}
-              </div>
-              {f && <Status f={f} />}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setUploadAberto(true)}
-                  className="flex items-center gap-1.5 rounded-md border border-linha-forte bg-folha px-3 py-1.5 text-sm font-medium hover:bg-papel"
-                >
-                  <FileUp size={15} /> Enviar arquivos do mês
-                </button>
-                <button
-                  onClick={() => executar("Fechando o mês de novo…", api.fechar)}
-                  disabled={Boolean(ocupado)}
-                  className="flex items-center gap-1.5 rounded-md bg-tinta px-3 py-1.5 text-sm font-medium text-folha disabled:opacity-60"
-                >
-                  <RefreshCw size={15} className={ocupado ? "animate-spin" : ""} /> Fechar de novo
-                </button>
-              </div>
+            <div className="mx-auto flex max-w-[1400px] items-center px-6 py-4">
+              <h1 className="text-3xl font-bold tracking-tight">Tarvo</h1>
             </div>
           </header>
 
           <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 px-4 py-6 sm:px-6 sm:py-8 md:grid-cols-[13rem_1fr]">
-            <nav aria-label="Seções" className="min-w-0 md:sticky md:top-28 md:self-start">
+            <nav aria-label="Seções" className="min-w-0 md:sticky md:top-24 md:self-start">
               <ul className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
                 {nav.map(([id, nome, n]) => (
                   <li key={id}>
@@ -146,8 +121,28 @@ export default function App() {
                   </ul>
                 </div>
               )}
-              {!f ? (
-                <p className="py-16 text-tinta-3">{ocupado ?? "Sem fechamento."}</p>
+              {tela === "arquivos" ? (
+                <AnimatePresence mode="wait">
+                  <motion.div key="arquivos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
+                    <h2 className="mb-6 text-2xl font-semibold tracking-tight text-balance">Arquivos e fechamento</h2>
+                    <Arquivos
+                      temFechamento={Boolean(f)}
+                      ocupado={ocupado}
+                      aoEnviar={async (arquivos) => {
+                        const novo = await api.enviarArquivos(arquivos);
+                        await aplicar(novo);
+                        setAviso(`Mês fechado com os arquivos enviados: ${novo.tabelas.pendencias.length} pendências.`);
+                        setTela("pendencias");
+                      }}
+                      aoFecharDeNovo={async () => {
+                        await executar("Fechando o mês de novo…", api.fechar);
+                        setTela("pendencias");
+                      }}
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              ) : !f ? (
+                <p className="py-16 text-tinta-3">{ocupado ?? "Sem fechamento. Envie os arquivos do mês para começar."}</p>
               ) : (
                 <AnimatePresence mode="wait">
                   <motion.div key={tela} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}>
@@ -202,16 +197,6 @@ export default function App() {
           </div>
 
           <Rastro alvo={alvo} aoFechar={() => setAlvo(null)} />
-          <Upload
-            aberto={uploadAberto}
-            aoFechar={() => setUploadAberto(false)}
-            aoEnviar={async (arquivos) => {
-              const novo = await api.enviarArquivos(arquivos); // erro sobe para o painel de upload
-              await aplicar(novo);
-              setUploadAberto(false);
-              setAviso(`Mês fechado com os arquivos enviados: ${novo.tabelas.pendencias.length} pendências.`);
-            }}
-          />
 
           <AnimatePresence>
             {aviso && (
@@ -230,28 +215,5 @@ export default function App() {
         </div>
       </RastroContext.Provider>
     </MotionConfig>
-  );
-}
-
-function Status({ f }: { f: Fechamento }) {
-  const v = f.validacoes;
-  const itens: [boolean, string][] = [
-    [v.rastro_ok, "Rastro fecha no centavo"],
-    [v.integridade_ok, "Toda linha de entrada tem saída"],
-  ];
-  if (v.referencia) {
-    itens.push([
-      v.referencia.casos_referencia_ok === v.referencia.casos_referencia_total,
-      `Referência manual ${v.referencia.casos_referencia_ok}/${v.referencia.casos_referencia_total}`,
-    ]);
-  }
-  return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="Validações do fechamento">
-      {itens.map(([ok, nome]) => (
-        <li key={nome} className={`flex items-center gap-1 ${ok ? "text-tinta-2" : "font-medium text-erro"}`}>
-          {ok ? <Check size={14} /> : <TriangleAlert size={14} />} {nome}
-        </li>
-      ))}
-    </ul>
   );
 }

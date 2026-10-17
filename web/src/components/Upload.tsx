@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { Check, FileUp, TriangleAlert, X } from "lucide-react";
+import { Check, FileUp, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Bloqueio } from "../api";
 import { ARQUIVO, FRENTE } from "../format";
@@ -51,14 +51,16 @@ function Anexo({ arquivo, porConteudo, aoRemover }: { arquivo: File; porConteudo
   );
 }
 
-export function Upload({
-  aberto,
-  aoFechar,
+export function Arquivos({
   aoEnviar,
+  aoFecharDeNovo,
+  ocupado,
+  temFechamento,
 }: {
-  aberto: boolean;
-  aoFechar: () => void;
   aoEnviar: (arquivos: FileList | File[]) => Promise<void>;
+  aoFecharDeNovo: () => Promise<void>;
+  ocupado: string | null;
+  temFechamento: boolean;
 }) {
   const [esperados, setEsperados] = useState<Esperado[]>([]);
   const [arquivos, setArquivos] = useState<File[]>([]);
@@ -70,12 +72,6 @@ export function Upload({
   useEffect(() => {
     fetch("/api/arquivos-esperados").then((r) => r.json()).then(setEsperados);
   }, []);
-  useEffect(() => {
-    if (!aberto) {
-      setArquivos([]);
-      setErroServidor(null);
-    }
-  }, [aberto]);
 
   const [conf, setConf] = useState<Conferencia>({ arquivos: [], problemas: [], faltando: [], bloqueios: [] });
   const [conferindo, setConferindo] = useState(false);
@@ -112,190 +108,193 @@ export function Upload({
   };
 
   return (
-    <AnimatePresence>
-      {aberto && (
-        <>
-          <motion.div className="fixed inset-0 z-30 bg-tinta/10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={aoFechar} />
-          <motion.aside
-            role="dialog"
-            aria-label="Enviar arquivos do mês"
-            className="fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col border-l border-linha bg-folha shadow-[0_8px_40px_-12px_oklch(0.24_0.02_255/0.25)]"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <header className="flex items-start justify-between border-b border-linha px-6 pt-6 pb-5">
-              <div>
-                <h2 className="text-[15px] font-semibold">Enviar arquivos do mês</h2>
-                <p className="mt-1 text-sm text-tinta-2">
-                  Envie os <strong className="font-semibold text-tinta">{obrigatorios.length} arquivos</strong> abaixo, os mesmos
-                  de todo mês. Se faltar algum, o fechamento roda o que der e mostra o que ficou bloqueado. Nome diferente
-                  não tem problema: o arquivo é reconhecido pelo conteúdo.
-                </p>
-              </div>
-              <button onClick={aoFechar} aria-label="Fechar" className="rounded-md p-1.5 text-tinta-2 hover:bg-papel hover:text-tinta">
-                <X size={18} />
-              </button>
-            </header>
-
-            <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-              <ol className="space-y-2">
-                {porEsperado.map(({ e, achados }) => {
-                  const ok = achados.length === 1 || (!e.obrigatorio && achados.length > 0);
-                  const falta = e.obrigatorio && achados.length === 0 && arquivos.length > 0;
-                  const repetido = e.obrigatorio && achados.length > 1;
-                  return (
-                    <li
-                      key={e.chave}
-                      className={`flex gap-3 rounded-md border px-3 py-2.5 text-sm transition-colors ${
-                        repetido ? "border-erro/40 bg-erro/5" : falta ? "border-decisao/50 bg-decisao-fundo" : ok ? "border-linha bg-papel" : "border-linha"
-                      }`}
-                    >
-                      <span className={`mt-0.5 shrink-0 ${ok ? "text-tinta" : repetido ? "text-erro" : falta ? "text-decisao-tinta" : "text-tinta-3"}`}>
-                        {ok ? <Check size={16} /> : falta || repetido ? <TriangleAlert size={16} /> : <FileUp size={16} />}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="font-medium">
-                          {e.nome}
-                          {!e.obrigatorio && <span className="ml-1.5 font-normal text-tinta-3">opcional</span>}
-                        </span>
-                        <span className="block text-tinta-2">{e.descricao}</span>
-                        {achados.length === 0 ? (
-                          <span className="block truncate font-mono text-xs text-tinta-3">{e.padrao}</span>
-                        ) : (
-                          <span className="mt-1 flex flex-wrap gap-1.5">
-                            {achados.map((a) => (
-                              <Anexo key={a.nome} arquivo={arquivo(a.nome)} porConteudo={a.por === "conteudo"} aoRemover={remover} />
-                            ))}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-
-              {arquivos.length > 0 && !conferindo && conf.bloqueios.length > 0 && conf.problemas.length === 0 && (
-                <div role="status" className="rounded-md border border-decisao/50 bg-decisao-fundo px-4 py-3 text-sm text-decisao-tinta">
-                  <p className="font-semibold">O fechamento vai sair em parte</p>
-                  <ul className="mt-1 space-y-1">
-                    {conf.bloqueios.map((b) => (
-                      <li key={b.frente}>
-                        <strong className="font-medium">{FRENTE[b.frente]}</strong> {b.parcial ? "fecha em parte" : "não fecha"}: falta{" "}
-                        {b.faltando.map((a) => ARQUIVO[a]).join(", ")}. Não sai: {b.nao_sai}.
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {desconhecidos.length > 0 && (
-                <div className="rounded-md border border-erro/40 bg-erro/5 px-3 py-2.5 text-sm">
-                  <p className="font-medium text-erro">Não fazem parte do fechamento</p>
-                  <span className="mt-1 flex flex-wrap gap-1.5">
-                    {desconhecidos.map((a) => (
-                      <Anexo key={a.nome} arquivo={arquivo(a.nome)} aoRemover={remover} />
-                    ))}
-                  </span>
-                </div>
-              )}
-
-              <button
-                onClick={() => input.current?.click()}
-                onDragOver={(ev) => {
-                  ev.preventDefault();
-                  setArrastando(true);
-                }}
-                onDragLeave={() => setArrastando(false)}
-                onDrop={(ev) => {
-                  ev.preventDefault();
-                  setArrastando(false);
-                  adicionar(ev.dataTransfer.files);
-                }}
-                className={`flex w-full flex-col items-center gap-1 rounded-lg border border-dashed py-6 text-sm transition-colors ${
-                  arrastando ? "border-decisao bg-decisao-fundo text-decisao-tinta" : "border-linha-forte text-tinta-2 hover:border-tinta-3"
-                }`}
-              >
-                <FileUp size={18} />
-                Arraste os arquivos aqui ou clique para escolher
-              </button>
-              <input
-                ref={input}
-                type="file"
-                multiple
-                hidden
-                onChange={(ev) => {
-                  adicionar(ev.target.files);
-                  ev.target.value = "";
-                }}
-              />
-
-              <AnimatePresence>
-                {arquivos.length > 0 && problemas.length > 0 && (
-                  <motion.div
-                    role="alert"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="rounded-md border border-erro/40 bg-erro/5 px-4 py-3 text-sm text-erro"
-                  >
-                    <p className="font-semibold">Faça o upload dos arquivos corretos</p>
-                    <ul className="mt-1 list-disc pl-5">
-                      {problemas.map((p) => (
-                        <li key={p}>{p}</li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              {erroServidor && (
-                <p role="alert" className="rounded-md border border-erro/40 bg-erro/5 px-4 py-3 text-sm text-erro">
-                  {erroServidor}
-                </p>
-              )}
+    <div className="space-y-8">
+      {temFechamento && (
+        <section className="rounded-lg border border-linha bg-folha px-6 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="text-[15px] font-semibold">Fechar</h3>
+              <p className="mt-1 text-sm text-tinta-2">
+                Roda o fechamento com os arquivos já enviados, sem precisar subir de novo.
+              </p>
             </div>
-
-            <footer className="flex items-center justify-between gap-3 border-t border-linha px-6 py-4">
-              <div className="min-w-0 text-sm" aria-live="polite">
-                {arquivos.length === 0 ? (
-                  <span className="text-tinta-3">Nenhum arquivo escolhido</span>
-                ) : conferindo ? (
-                  <span className="text-tinta-3">Conferindo os arquivos…</span>
-                ) : problemas.length > 0 ? (
-                  <span className="font-medium text-erro">Faça o upload dos arquivos corretos ({problemas.length} {problemas.length === 1 ? "problema" : "problemas"})</span>
-                ) : conf.faltando.length > 0 ? (
-                  <span className="font-medium text-decisao-tinta">
-                    {conf.faltando.length === 1 ? "Falta 1 arquivo" : `Faltam ${conf.faltando.length} arquivos`}: fecha só o que der
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-tinta-2">
-                    <Check size={15} /> Os {obrigatorios.length} arquivos estão certos ·{" "}
-                    <button onClick={() => setArquivos([])} className="underline">limpar</button>
-                  </span>
-                )}
-              </div>
-              <button
-                disabled={!pronto || enviando}
-                onClick={async () => {
-                  setEnviando(true);
-                  setErroServidor(null);
-                  try {
-                    await aoEnviar(arquivos);
-                  } catch (e) {
-                    setErroServidor((e as Error).message);
-                  } finally {
-                    setEnviando(false);
-                  }
-                }}
-                className="rounded-md bg-tinta px-4 py-2 text-sm font-medium text-folha transition-opacity disabled:opacity-40"
-              >
-                {enviando ? "Fechando o mês…" : conf.faltando.length > 0 ? "Fechar o que der" : "Fechar o mês com estes arquivos"}
-              </button>
-            </footer>
-          </motion.aside>
-        </>
+            <button
+              onClick={aoFecharDeNovo}
+              disabled={Boolean(ocupado)}
+              className="flex items-center gap-1.5 rounded-md bg-tinta px-4 py-2 text-sm font-medium text-folha disabled:opacity-60"
+            >
+              <RefreshCw size={15} className={ocupado ? "animate-spin" : ""} /> Fechar
+            </button>
+          </div>
+        </section>
       )}
-    </AnimatePresence>
+
+      <section className="rounded-lg border border-linha bg-folha">
+        <header className="border-b border-linha px-6 pt-5 pb-4">
+          <h3 className="text-[15px] font-semibold">Enviar arquivos do mês</h3>
+          <p className="mt-1 text-sm text-tinta-2">
+            Envie os <strong className="font-semibold text-tinta">{obrigatorios.length} arquivos</strong> abaixo, os mesmos
+            de todo mês. Se faltar algum, o fechamento roda o que der e mostra o que ficou bloqueado. Nome diferente
+            não tem problema: o arquivo é reconhecido pelo conteúdo.
+          </p>
+        </header>
+
+        <div className="space-y-5 px-6 py-5">
+          <ol className="space-y-2">
+            {porEsperado.map(({ e, achados }) => {
+              const ok = achados.length === 1 || (!e.obrigatorio && achados.length > 0);
+              const falta = e.obrigatorio && achados.length === 0 && arquivos.length > 0;
+              const repetido = e.obrigatorio && achados.length > 1;
+              return (
+                <li
+                  key={e.chave}
+                  className={`flex gap-3 rounded-md border px-3 py-2.5 text-sm transition-colors ${
+                    repetido ? "border-erro/40 bg-erro/5" : falta ? "border-decisao/50 bg-decisao-fundo" : ok ? "border-linha bg-papel" : "border-linha"
+                  }`}
+                >
+                  <span className={`mt-0.5 shrink-0 ${ok ? "text-tinta" : repetido ? "text-erro" : falta ? "text-decisao-tinta" : "text-tinta-3"}`}>
+                    {ok ? <Check size={16} /> : falta || repetido ? <TriangleAlert size={16} /> : <FileUp size={16} />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="font-medium">
+                      {e.nome}
+                      {!e.obrigatorio && <span className="ml-1.5 font-normal text-tinta-3">opcional</span>}
+                    </span>
+                    <span className="block text-tinta-2">{e.descricao}</span>
+                    {achados.length === 0 ? (
+                      <span className="block truncate font-mono text-xs text-tinta-3">{e.padrao}</span>
+                    ) : (
+                      <span className="mt-1 flex flex-wrap gap-1.5">
+                        {achados.map((a) => (
+                          <Anexo key={a.nome} arquivo={arquivo(a.nome)} porConteudo={a.por === "conteudo"} aoRemover={remover} />
+                        ))}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+
+          {arquivos.length > 0 && !conferindo && conf.bloqueios.length > 0 && conf.problemas.length === 0 && (
+            <div role="status" className="rounded-md border border-decisao/50 bg-decisao-fundo px-4 py-3 text-sm text-decisao-tinta">
+              <p className="font-semibold">O fechamento vai sair em parte</p>
+              <ul className="mt-1 space-y-1">
+                {conf.bloqueios.map((b) => (
+                  <li key={b.frente}>
+                    <strong className="font-medium">{FRENTE[b.frente]}</strong> {b.parcial ? "fecha em parte" : "não fecha"}: falta{" "}
+                    {b.faltando.map((a) => ARQUIVO[a]).join(", ")}. Não sai: {b.nao_sai}.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {desconhecidos.length > 0 && (
+            <div className="rounded-md border border-erro/40 bg-erro/5 px-3 py-2.5 text-sm">
+              <p className="font-medium text-erro">Não fazem parte do fechamento</p>
+              <span className="mt-1 flex flex-wrap gap-1.5">
+                {desconhecidos.map((a) => (
+                  <Anexo key={a.nome} arquivo={arquivo(a.nome)} aoRemover={remover} />
+                ))}
+              </span>
+            </div>
+          )}
+
+          <button
+            onClick={() => input.current?.click()}
+            onDragOver={(ev) => {
+              ev.preventDefault();
+              setArrastando(true);
+            }}
+            onDragLeave={() => setArrastando(false)}
+            onDrop={(ev) => {
+              ev.preventDefault();
+              setArrastando(false);
+              adicionar(ev.dataTransfer.files);
+            }}
+            className={`flex w-full flex-col items-center gap-1 rounded-lg border border-dashed py-6 text-sm transition-colors ${
+              arrastando ? "border-decisao bg-decisao-fundo text-decisao-tinta" : "border-linha-forte text-tinta-2 hover:border-tinta-3"
+            }`}
+          >
+            <FileUp size={18} />
+            Arraste os arquivos aqui ou clique para escolher
+          </button>
+          <input
+            ref={input}
+            type="file"
+            multiple
+            hidden
+            onChange={(ev) => {
+              adicionar(ev.target.files);
+              ev.target.value = "";
+            }}
+          />
+
+          <AnimatePresence>
+            {arquivos.length > 0 && problemas.length > 0 && (
+              <motion.div
+                role="alert"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-md border border-erro/40 bg-erro/5 px-4 py-3 text-sm text-erro"
+              >
+                <p className="font-semibold">Faça o upload dos arquivos corretos</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {problemas.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {erroServidor && (
+            <p role="alert" className="rounded-md border border-erro/40 bg-erro/5 px-4 py-3 text-sm text-erro">
+              {erroServidor}
+            </p>
+          )}
+        </div>
+
+        <footer className="flex items-center justify-between gap-3 border-t border-linha px-6 py-4">
+          <div className="min-w-0 text-sm" aria-live="polite">
+            {arquivos.length === 0 ? (
+              <span className="text-tinta-3">Nenhum arquivo escolhido</span>
+            ) : conferindo ? (
+              <span className="text-tinta-3">Conferindo os arquivos…</span>
+            ) : problemas.length > 0 ? (
+              <span className="font-medium text-erro">Faça o upload dos arquivos corretos ({problemas.length} {problemas.length === 1 ? "problema" : "problemas"})</span>
+            ) : conf.faltando.length > 0 ? (
+              <span className="font-medium text-decisao-tinta">
+                {conf.faltando.length === 1 ? "Falta 1 arquivo" : `Faltam ${conf.faltando.length} arquivos`}: fecha só o que der
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-tinta-2">
+                <Check size={15} /> Os {obrigatorios.length} arquivos estão certos ·{" "}
+                <button onClick={() => setArquivos([])} className="underline">limpar</button>
+              </span>
+            )}
+          </div>
+          <button
+            disabled={!pronto || enviando || Boolean(ocupado)}
+            onClick={async () => {
+              setEnviando(true);
+              setErroServidor(null);
+              try {
+                await aoEnviar(arquivos);
+                setArquivos([]);
+              } catch (e) {
+                setErroServidor((e as Error).message);
+              } finally {
+                setEnviando(false);
+              }
+            }}
+            className="rounded-md bg-tinta px-4 py-2 text-sm font-medium text-folha transition-opacity disabled:opacity-40"
+          >
+            {enviando ? "Fechando o mês…" : conf.faltando.length > 0 ? "Fechar o que der" : "Fechar o mês com estes arquivos"}
+          </button>
+        </footer>
+      </section>
+    </div>
   );
 }
