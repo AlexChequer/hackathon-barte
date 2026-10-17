@@ -2,6 +2,10 @@
 
 Base: motor v1 do Helio (`main`), conferido contra R1–R14 e O1. O que já funciona está em `docs/MVP_V1.md`. Aqui fica só o que falta.
 
+**Checkpoints da organização (no canal):**
+- **11h45, Checkpoint 1:** causa raiz em até 2 frases; nível (mínimo, alvo ou extra); plano até 18h30 em 2 a 4 marcos com horário; 3 premissas não confirmadas e o que muda se estiverem erradas; o que fica de fora de propósito; quem faz o quê.
+- **16h, Checkpoint 2:** o que já roda ponta a ponta; o que mudou desde a manhã e por quê; o que vão cortar; maior risco e o que estão fazendo; onde a banca pode ajudar.
+
 Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relatório de pendências
 
 ## Transversal (bloqueia a entrega, O1)
