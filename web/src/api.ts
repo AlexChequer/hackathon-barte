@@ -71,6 +71,7 @@ export const api = {
   fechamento: () => pedir<Fechamento>("/api/fechamento"),
   fechar: () => pedir<Fechamento>("/api/fechar", { method: "POST" }),
   rastro: (id: string) => pedir<{ id_saida: string; linhas: Linha[] }>(`/api/rastro/${encodeURIComponent(id)}`),
+  rastroCompleto: () => pedir<{ linhas: Linha[] }>("/api/rastro"),
   lojistas: () => pedir<{ cnpj: string; lojista: string }[]>("/api/lojistas"),
   condicoes: () => pedir<{ condicoes: Condicao[]; sinais_resolvidos: Linha[] }>("/api/condicoes"),
   sinais: () => pedir<SinalAberto[]>("/api/sinais"),

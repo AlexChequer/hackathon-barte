@@ -12,6 +12,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import logging
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -66,6 +67,15 @@ def _mesclar(dfs: list[pd.DataFrame]) -> pd.DataFrame:
         return pd.DataFrame()
     return pd.concat(nonempty, ignore_index=True)
 
+
+SAIDAS = [
+    "comissoes_por_lojista.csv",
+    "divergencias_taxa.csv",
+    "notas_a_emitir.csv",
+    "lancamentos_classificados.csv",
+    "pendencias.csv",
+    "rastro.csv",
+]
 
 # Fonte e coluna de data que definem a competência de cada arquivo (R2: data do movimento;
 # R5: data de contratação).
@@ -223,12 +233,14 @@ def run_closing(
     out_dir = saida / competencia / f"exec_{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    output.write_output(comissoes, "comissoes_por_lojista.csv", out_dir)
-    output.write_output(divergencias, "divergencias_taxa.csv", out_dir)
-    output.write_output(notas, "notas_a_emitir.csv", out_dir)
-    output.write_output(lancamentos, "lancamentos_classificados.csv", out_dir)
-    output.write_output(pendencias, "pendencias.csv", out_dir)
-    output.write_output(rastro, "rastro.csv", out_dir)
+    tabelas = dict(zip(SAIDAS, [comissoes, divergencias, notas, lancamentos, pendencias, rastro],
+                       strict=True))
+    for nome, df in tabelas.items():
+        output.write_output(df, nome, out_dir)
+    # R26: a entrega é a pasta saida/ da raiz com os 6 CSVs do último fechamento; o histórico
+    # de cada execução fica em saida/<competência>/exec_*/ (fora do git).
+    for nome in SAIDAS:
+        shutil.copyfile(out_dir / nome, saida / nome)
 
     latest = saida / competencia / "latest"
     if latest.exists() or latest.is_symlink():

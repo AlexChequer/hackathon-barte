@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
-import type { Fechamento, Linha } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import { api, type Fechamento, type Linha } from "../api";
 import { cnpj, data, dinheiro, pct } from "../format";
 import { nomesPorCnpj } from "./Pendencias";
 import { Valor } from "./Valor";
+
+const ARQUIVO: Record<string, string> = {
+  orbe: "Relatório Orbe (01)",
+  orbe_ajustes: "Ajustes tardios Orbe (06)",
+  ponte: "Relatório Ponte (03)",
+  aurora: "Extrato Aurora (05a)",
+  meridiano: "Extrato Meridiano (05b)",
+  taxas: "Planilha de taxas (02)",
+};
 
 const th = "py-2.5 pr-4 text-left text-xs font-medium text-tinta-3";
 const td = "py-2 pr-4";
@@ -183,6 +192,101 @@ export function Divergencias({ f }: { f: Fechamento }) {
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+type FiltroArquivo = "TODOS" | keyof typeof ARQUIVO;
+const LIMITE_RASTRO = 500;
+
+export function Rastro({ f }: { f: Fechamento }) {
+  const [arquivo, setArquivo] = useState<FiltroArquivo>("TODOS");
+  const [busca, setBusca] = useState("");
+  const [todas, setTodas] = useState<Linha[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTodas(null);
+    setErro(null);
+    api.rastroCompleto().then((r) => setTodas(r.linhas)).catch((e: Error) => setErro(e.message));
+  }, [f.execucao_id]);
+
+  const filtradas = useMemo(() => {
+    if (!todas) return [];
+    const q = busca.trim().toLowerCase();
+    return todas.filter((l) => {
+      if (arquivo !== "TODOS" && l.arquivo_origem !== arquivo) return false;
+      if (!q) return true;
+      return `${l.id_saida} ${l.ref_origem} ${l.metadata ?? ""}`.toLowerCase().includes(q);
+    });
+  }, [todas, arquivo, busca]);
+
+  const porArquivo = useMemo(() => {
+    const c: Record<string, number> = {};
+    (todas ?? []).forEach((l) => {
+      const k = l.arquivo_origem ?? "—";
+      c[k] = (c[k] ?? 0) + 1;
+    });
+    return c;
+  }, [todas]);
+
+  const visiveis = filtradas.slice(0, LIMITE_RASTRO);
+  const opcoes: [FiltroArquivo, string, number][] = [
+    ["TODOS", "Todos", todas?.length ?? 0],
+    ...(Object.keys(ARQUIVO) as (keyof typeof ARQUIVO)[])
+      .filter((k) => porArquivo[k])
+      .map((k) => [k, ARQUIVO[k], porArquivo[k]] as [FiltroArquivo, string, number]),
+  ];
+
+  return (
+    <div>
+      <p className="mb-5 max-w-[70ch] text-tinta-2">
+        Uma linha para cada centavo que entra em um número de saída. Toda saída precisa ter rastro cuja soma bate exata com o
+        valor dela. Clique no valor para ver só o rastro de um id.
+      </p>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Filtros opcoes={opcoes} atual={arquivo} aoMudar={setArquivo} />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar id de saída, origem ou metadado"
+          className="mb-4 w-72 rounded-md border border-linha-forte bg-folha px-3 py-1.5 text-sm placeholder:text-tinta-3"
+        />
+      </div>
+      {erro && <p className="text-sm text-erro">{erro}</p>}
+      {!todas && !erro && <p className="text-sm text-tinta-3">Carregando o rastro…</p>}
+      {todas && (
+        <>
+          <p className="mb-2 text-xs text-tinta-3">
+            {filtradas.length.toLocaleString("pt-BR")} de {todas.length.toLocaleString("pt-BR")} linhas
+            {filtradas.length > LIMITE_RASTRO && ` · mostrando as primeiras ${LIMITE_RASTRO}`}
+          </p>
+          <table className="w-full text-sm">
+            <thead className="border-b border-linha-forte">
+              <tr>
+                <th className={th}>Id de saída</th>
+                <th className={th}>Arquivo</th>
+                <th className={th}>Linha de origem</th>
+                <th className={th}>Metadado</th>
+                <th className={`${th} text-right`}>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map((l, i) => (
+                <tr key={`${l.id_saida}-${l.ref_origem}-${i}`} className="border-b border-linha">
+                  <td className={`${td} font-mono text-[13px]`}>{l.id_saida}</td>
+                  <td className={`${td} text-tinta-2`}>{ARQUIVO[l.arquivo_origem ?? ""] ?? l.arquivo_origem}</td>
+                  <td className={`${td} font-mono text-[13px]`}>{l.ref_origem}</td>
+                  <td className={`${td} font-mono text-[12px] text-tinta-3`}>{l.metadata ?? ""}</td>
+                  <td className={`${td} pr-0 text-right`}>
+                    <Valor id={l.id_saida!} valor={l.valor} titulo={l.id_saida ?? ""} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }
