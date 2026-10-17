@@ -14,8 +14,8 @@ Estado agora: `main` verde no CI, repositório **público**, 152 testes passando
 | E2 | **Export das sessões de IA, cada um na própria máquina**: `python scripts/exportar_sessoes.py <github-user> --email <seu e-mail>` e de novo com `--completo`. Quem usou ChatGPT, Cursor ou outra ferramenta coloca os links em `PROMPTS/sessoes/<user>/links.md` | Alex, Helio, André | 17h30–18h | ⏳ |
 | E3 | **Saída final**: **uma só pessoa** roda `python -m tarvo --dados data/raw/set2026`, confere 14/14 no log e commita `saida/*.csv`. Ninguém mais regenera depois disso | Alex | depois da última mudança no motor (ideal ~17h15) | ⏳ (a atual está correta, mas pode mudar se o front ou o motor mudarem) |
 | E4 | **Último push até 18h15** e conferir no GitHub: repo público, CI verde, `saida/` com os 6 CSVs, README abrindo | Alex | 18h15 | ⏳ |
-| E5 | **E-mail com o link do repositório** | Alex | até 18h30 | ⏳ |
-| E6 | **Pitch** (PDF ou slides) e e-mail com o link | time | até 19h | ⏳ |
+| E5 | **E-mail com o link do repositório** para fernando.seguim@barte.com, manuel.freitas@barte.com e tulio.andrade@barte.com. **Assunto: Fox AI + nome completo dos 3** (O6) | Alex | até 18h30 | ⏳ |
+| E6 | **Pitch** (PDF ou slides) e e-mail com o link, para os mesmos 3 e-mails e com o mesmo assunto | time | até 19h | ⏳ |
 
 ## 2. Para o André mexer no front agora (ideal até 17h, limite 18h15)
 
