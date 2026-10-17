@@ -1,0 +1,8 @@
+{
+  "_descricao": "Cadastro mínimo para o fluxo de decisão (R20). O backend nunca aceita 'aprovado_por' do formulário como aprovação; a identidade autenticada vem do header X-Tarvo-Usuario e precisa casar com o perfil cadastrado aqui.",
+  "usuarios": [
+    { "nome": "Helena", "perfil": "financeiro" },
+    { "nome": "André", "perfil": "comercial" },
+    { "nome": "Fox AI", "perfil": "operador" }
+  ]
+}

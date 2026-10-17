@@ -62,6 +62,28 @@ Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R34 avisar quando o layout quebra; arquivo ausente não segura o mês | ✅ arquivo ausente fecha em parte (gap 18); arquivo com nome trocado é reconhecido pelo conteúdo · ✅ coluna renomeada vira bloqueio com mensagem clara (gap 17) |
 | P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
+## Ciclo de decisão (17/10, nível extra)
+
+O motor agora separa quatro conceitos com identidade estável, independentes da execução:
+
+- **caso** (`src/tarvo/casos.py`): o "mesmo problema" entre meses. `caso_hash` sai de `tipo|cnpj|ref|competencia` em SHA-256, não do `id_saida` (que a Ponte pode reemitir).
+- **decisão** (`decisoes_v2`): proposta tipada com `status ∈ {PENDENTE, APROVADA, REJEITADA, REVOGADA, SUBSTITUIDA}`, versão incremental e `substitui_id` quando reaproveitada. Histórico nunca é sobrescrito.
+- **condição comercial** (`condicoes_comerciais.json` + evento publicado após aprovação com escopo `CONDICAO`): reutilizável por CNPJ/vigência.
+- **resultado operacional** (`resultados_operacionais`): rastreia o lado operacional (ABERTO → PARCIAL → RESOLVIDO) com saldo em centavos; `RESOLVIDO` exige evidência.
+
+Autenticação mínima (R20) por header `X-Tarvo-Usuario`/`X-Tarvo-Perfil`, cadastro em `config/usuarios.json`. Comercial aprova `REGISTRAR_CONDICAO_COMERCIAL`; Financeiro aprova as demais regras de fechamento. `aprovado_por` nunca vem do formulário — para aprovação externa (e-mail/Slack do comercial) registramos `aprovacao_externa` com evidência, mantendo o aprovador autenticado como responsável.
+
+Reaproveitamento em 3 níveis, determinístico:
+1. Mesmo caso (`caso_hash`) com decisão APROVADA + composição não mudou → reaplica.
+2. Caso novo coberto por condição comercial aprovada (CNPJ + modalidade + vigência) → reaplica.
+3. Casos semelhantes do mesmo tipo → aparecem como precedente na UI; **não autorizam**.
+
+Aplicações são idempotentes por `(decisao_id, execucao_id)`: reprocessar o mês não duplica efeito.
+
+Frontend: `web/src/components/FluxoDecisao.tsx` aparece no painel de cada pendência expandida. Separa visualmente **Salvar proposta** de **Confirmar aprovação**. Novas rotas: `GET /api/tratamentos|casos/{h}|casos/{h}/precedentes|metricas`, `POST /api/decisoes[/{id}/{aprovar|rejeitar|revogar}]`, `POST /api/casos/{h}/resultado`.
+
+Testes: `tests/test_decisoes.py` (18 cenários) + os 168 existentes = **186 passando**, `ruff` limpo, build do frontend verde.
+
 ## Hardening do pipeline (17/10 tarde, commit `facce8b`)
 
 Antes: o motor dependia da ordem das linhas na Orbe, aceitava transação duplicada em silêncio, não rejeitava data fora da competência, perdia operação de remessa sem spread sem registrar, e agrupava remessa pelo nome do lojista (que varia entre linhas da Ponte). São todos riscos de o faturamento sair errado sem nenhum sinal.
