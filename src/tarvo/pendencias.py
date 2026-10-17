@@ -37,10 +37,10 @@ PROXIMO_PASSO: dict[str, Callable[[dict], str]] = {
         "Comercial confirma se a anotação muda a taxa. Se mudar, registrar a condição na tela "
         "Condições comerciais (taxa por modalidade, início e fim) e fechar de novo (R20)."),
     "SEM_CONTRATO": lambda p: (
-        "Comercial confirma o contrato e a taxa. Confirmado, o fechamento do mês seguinte fatura estas "
-        "transações junto (R18). O repasse ao lojista não para (R25)."),
+        "Diego (Comercial) confirma o contrato e a taxa (R38). Confirmado, o fechamento do mês "
+        "seguinte fatura estas transações junto (R18). O repasse ao lojista não para (R25)."),
     "ALERTA_ANTECIPACAO": lambda p: (
-        "Financeiro e Comercial confirmam o contrato do lojista antes de liberar novas antecipações "
+        "Helena e Diego (Comercial) confirmam o contrato do lojista antes de liberar novas antecipações "
         "(R16.6, R28.2)."),
     "NOTA_NEGATIVA": lambda p: (
         "Não emitir nota para a Ponte. Helena decide com a Ponte como tratar o saldo do mês (R27)."
@@ -90,8 +90,8 @@ PROXIMO_PASSO: dict[str, Callable[[dict], str]] = {
         "Comercial corrige o spread de remessa do lojista na planilha (vazio ou \"padrão\" vale 1,5%, R5)."),
     # extratos
     "PIX_NAO_IDENTIFICADO": lambda p: (
-        "Identificar o pagador pelo CNPJ que vem no extrato. Até lá, fica em créditos não identificados, "
-        "sem virar receita (R6)."),
+        "Caio identifica o pagador com o banco, pelo CNPJ do extrato, até o fechamento de outubro "
+        "(R38). Até lá, fica em créditos não identificados, sem virar receita (R6)."),
     "DEVOLUCAO_LOJISTA_SEM_MOTIVO": lambda p: (
         "Confirmar com o lojista o motivo da devolução e refazer o repasse. Até lá, fica em repasses a "
         "pagar (R6, P17)."),
