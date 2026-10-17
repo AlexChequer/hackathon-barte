@@ -1,6 +1,8 @@
 # O que falta para fechar 100% (17/10, ~15h45)
 
-Prazos: **17h** congelar features · **17h45** fim do atendimento do financeiro · **18h30** link do repositório por e-mail (commit depois disso não conta) · **19h** link do pitch.
+Prazos oficiais (organização): **17h45** fim do atendimento do financeiro · **18h30** link do repositório por e-mail (commit depois disso não conta) · **19h** link do pitch.
+
+Combinado interno (sugestão, não é prazo da organização): **até 17h** parar de mexer no motor, para sobrar tempo de conferir a saída, exportar as sessões e fechar o pitch com números estáveis. Mexer depois pode, mas quem mudar o motor avisa no grupo, porque aí a `saida/` e os números do pitch precisam ser conferidos de novo. **Limite para qualquer push: 18h15.**
 
 Estado agora: `main` verde no CI, repositório **público**, 152 testes passando + 1 falha esperada (gap 10), referência manual 14/14, `saida/` de setembro commitada.
 
@@ -10,12 +12,12 @@ Estado agora: `main` verde no CI, repositório **público**, 152 testes passando
 |---|---|---|---|---|
 | E1 | **Escolher 2 a 4 momentos** em `PROMPTS/MOMENTOS.md` (hoje são 5 candidatos; pelo menos 1 com erro da IA). Sugestão: 3 (loader sem comentários de célula), 4 (fórmula de divergência que a Helena contrariou) e 5 (Laya com instrução longa) | time | até 17h30 | ⏳ |
 | E2 | **Export das sessões de IA, cada um na própria máquina**: `python scripts/exportar_sessoes.py <github-user> --email <seu e-mail>` e de novo com `--completo`. Quem usou ChatGPT, Cursor ou outra ferramenta coloca os links em `PROMPTS/sessoes/<user>/links.md` | Alex, Helio, André | 17h30–18h | ⏳ |
-| E3 | **Saída final**: **uma só pessoa** roda `python -m tarvo --dados data/raw/set2026`, confere 14/14 no log e commita `saida/*.csv`. Ninguém mais regenera depois disso | Alex | depois do congelamento, ~17h15 | ⏳ (a atual está correta, mas pode mudar se o front ou o motor mudarem) |
+| E3 | **Saída final**: **uma só pessoa** roda `python -m tarvo --dados data/raw/set2026`, confere 14/14 no log e commita `saida/*.csv`. Ninguém mais regenera depois disso | Alex | depois da última mudança no motor (ideal ~17h15) | ⏳ (a atual está correta, mas pode mudar se o front ou o motor mudarem) |
 | E4 | **Último push até 18h15** e conferir no GitHub: repo público, CI verde, `saida/` com os 6 CSVs, README abrindo | Alex | 18h15 | ⏳ |
 | E5 | **E-mail com o link do repositório** | Alex | até 18h30 | ⏳ |
 | E6 | **Pitch** (PDF ou slides) e e-mail com o link | time | até 19h | ⏳ |
 
-## 2. Para o André mexer no front agora (até 17h)
+## 2. Para o André mexer no front agora (ideal até 17h, limite 18h15)
 
 - O código do front fica em `web/src/`. Para rodar em modo de desenvolvimento: `cd web && npm install && npm run dev`, com a API em outra aba: `python -m tarvo.web --dados data/raw/set2026 --porta 8000 --sem-navegador`.
 - **Ao terminar**, rode `npm run build`. Isso regenera `src/tarvo/web/static/`, que é o que a banca usa sem Node. Commite **também** essa pasta.
@@ -56,4 +58,4 @@ Estado agora: `main` verde no CI, repositório **público**, 152 testes passando
 
 - **`saida/` regenerada por mais de uma pessoa ou pelo painel:** resolve com o E3, uma pessoa e uma vez.
 - **Front mexido sem rodar `npm run build`:** a banca veria a versão antiga. Conferir que `src/tarvo/web/static/` mudou no commit do André.
-- **Push em cima de push perto das 18h:** combinar que depois de 18h só o Alex faz push.
+- **Push em cima de push perto das 18h:** sugestão: depois das 18h, um push por vez e avisando no grupo, com o Alex fazendo o último (E4).
