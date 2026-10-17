@@ -240,6 +240,34 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             # Divergência não vira pendência: a linha em divergencias.csv já é a saída oficial
             # para o humano decidir. Duplicar causaria id_saida repetido e rastro em dobro.
 
+    # Contestação com a Ponte: uma pendência por lojista com spread acima do contrato (R10, R12,
+    # R24.1), valor cheio (R7), rastro por operação. A nota segue pelo realizado (R10).
+    for cnpj, total, linhas in _divergencias_por_lojista(divergencias_rows):
+        contesta_id = f"RM-CONTESTA-{competencia}-{cnpj}"
+        pares = sorted({(linha["taxa_contratada_pct"], linha["taxa_aplicada_pct"]) for linha in linhas})
+        faixa = f"contrato {pares[0][0]}% × cobrado de {pares[0][1]}% a {pares[-1][1]}%"
+        pendencias.append({
+            "id": contesta_id,
+            "tipo": "CONTESTACAO_PONTE",
+            "ref_origem": cnpj,
+            "arquivo_origem": ARQUIVO_PONTE,
+            "valor_brl": total,
+            "motivo": (
+                f"{_nome_lojista(nomes_por_cnpj.get(cnpj, []))}: {len(linhas)} operações com spread acima do "
+                f"contratado ({faixa}), diferença cheia {total} (R7). Contestar com a Ponte com as operações "
+                "listadas no rastro. A nota de setembro sai pelo realizado. Se a Ponte devolver, a nossa "
+                "metade sai no mês do ajuste (R10, R12)."
+            ),
+            "quem_decide": "Financeiro",
+            "cnpj": cnpj,
+            "linha_negocio": "REMESSA",
+            "rastro_proprio": True,
+        })
+        for linha in linhas:
+            rastro_rows.append({"id_saida": contesta_id, "arquivo_origem": ARQUIVO_PONTE,
+                                "ref_origem": linha["ref_origem"], "valor": linha["diferenca_brl"],
+                                "metadata": "pendencia_CONTESTACAO_PONTE"})
+
     # 3) Comissões REMESSA por lojista.
     comissao_rows_df: list[dict] = []
     for cnpj, total in sorted(por_lojista.items()):
@@ -329,7 +357,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     # emitiu o seu por operação; a duplicata conflitante aponta a operação (`ref_rastro`).
     pend_df = pd.DataFrame(pendencias)
     for p in pendencias:
-        if p["id"] == pend_id:
+        if p["id"] == pend_id or p.get("rastro_proprio"):
             continue
         ref = p.get("ref_rastro", p["ref_origem"])
         metadata = f"pendencia_{p['tipo']}"
@@ -352,6 +380,14 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     result.rastro = pd.DataFrame(rastro_rows)
     result.diagnosticos = [{"codigo": "DUPLICATA_RESOLVIDA", **d} for d in duplicados_resolvidos]
     return result
+
+
+def _divergencias_por_lojista(divergencias: list[dict]) -> list[tuple[str, Decimal, list[dict]]]:
+    por: dict[str, list[dict]] = {}
+    for linha in divergencias:
+        por.setdefault(linha["cnpj"], []).append(linha)
+    return [(cnpj, sum_q(linha["diferenca_brl"] for linha in linhas), linhas)
+            for cnpj, linhas in sorted(por.items())]
 
 
 def _competencia_fmt(competencia: str) -> str:
