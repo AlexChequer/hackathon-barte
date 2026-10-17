@@ -35,7 +35,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 7 | ✅ Duplicata `PC-0926-0162` como pendência (Ponte corrigir o relatório) | R12 | **Helio** | Não |
 | 8 | ✅ `quem_decide` = Financeiro em todas as pendências da remessa (`RM-CONTEST`, duplicata conflitante, status desconhecido, spread ausente) | R11, R12 | **Helio** (feito pelo Alex) | Não |
 | 9 | ✅ Negativo com dois valores: spread do relatório + diferença até o contrato | R28.3, P23 | **Helio** | Não |
-| 10 | Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece (teste sintético) | R27, P21 | **Helio** | Não |
+| 10 | Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece (teste sintético) | R27, P21 | **Helio** | Não Teste pronto e marcado como falha esperada em `tests/test_outubro_sintetico.py`: quando implementar, o teste passa e o `xfail(strict=True)` avisa para tirar a marca. |
 | 11 | ✅ Pendência de contestação **Orbe × Rota** (R$ 1.546,28) e **Orbe × Bridge** (R$ 29,95) por lojista, `CONTESTACAO_ORBE`, valor líquido | R1, R16.3, R24.1, R28.1 | **Alex** | Não |
 | 12 | ✅ Alerta de antecipação para lojista sem histórico, pelo pico (Atlas: 15/09, R$ 179.592,82 × R$ 55.357,50) | R16.6, R28.2, R32, P22 | **Alex** | Não |
 | 13 | ✅ Atlas: 1 pendência `SEM_CONTRATO` por lojista (57 transações no rastro) com CNPJ 39566044000119 (só identidade) | R24.1, R30 | **Alex** | Não |

@@ -100,6 +100,8 @@ pip install -e ".[dev]"
 pytest -q && ruff check .
 ```
 
+Os testes incluem um **outubro sintético** de ponta a ponta (`tests/test_outubro_sintetico.py`). O pacote é gerado a partir de setembro, com datas de outubro, um lojista novo, uma anotação nova na planilha, o repasse de 09/2026 e um ajuste da Ponte, e não é dado real. Para gerar o pacote numa pasta e testar pelo painel: `python scripts/gerar_outubro_sintetico.py <pasta>`. Também há casos sintéticos para arquivo faltando, layout quebrado, nome de arquivo trocado, duplicata e spread acima do contrato.
+
 O front fica em `web/` (React + TypeScript + Vite + Tailwind + motion) e já vai compilado em `src/tarvo/web/static/`. Para mexer nele: `cd web && npm install && npm run dev`, com a API rodando em `:8000`. Para regenerar o build: `npm run build`.
 
 ## Documentação
