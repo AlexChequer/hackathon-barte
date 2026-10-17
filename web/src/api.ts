@@ -26,6 +26,7 @@ export interface Bloqueio {
   faltando: string[];
   parcial: boolean;
   nao_sai: string;
+  motivo_layout?: string;
 }
 
 export interface Condicao {

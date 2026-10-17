@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from tarvo import parse
+from tarvo.loaders.layout import LayoutInvalido
 
 COLUMN_HEADER = "Data;Lançamento;Documento;Valor (R$);Saldo (R$)"
 NON_TRANSACTIONS = {"SALDO ANTERIOR", "SALDO FINAL"}
@@ -18,7 +19,9 @@ def load_aurora(path: Path) -> pd.DataFrame:
     try:
         header_idx = next(i for i, line in enumerate(lines) if line.strip() == COLUMN_HEADER)
     except StopIteration as exc:
-        raise ValueError(f"cabeçalho '{COLUMN_HEADER}' não encontrado em {path.name}") from exc
+        candidato = next((line for line in lines if line.startswith("Data;")), "")
+        raise LayoutInvalido(path, [c for c in COLUMN_HEADER.split(";") if c not in candidato.split(";")]
+                             or [COLUMN_HEADER], candidato.split(";")) from exc
     records = []
     for idx, line in enumerate(lines[header_idx + 1:], start=header_idx + 2):
         data, descricao, documento, valor, saldo = (line.split(";") + [""] * 5)[:5]

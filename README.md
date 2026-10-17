@@ -44,6 +44,7 @@ Aponte `--dados` para a pasta com os arquivos do mês, no mesmo formato. Pode se
 - **Nomes dos arquivos:** reconhecidos pelo padrão (`01_orbe_relatorio_comissoes_*.csv`, ...). Se o nome vier diferente, o arquivo é reconhecido pelo conteúdo.
 - **Ajustes tardios da Orbe** (`*_orbe_ajustes_*.csv`) entram junto com o relatório principal.
 - **Faltou arquivo?** O fechamento roda o que der e marca o resto como bloqueado. Sem a Ponte, por exemplo, checkout e extratos fecham, e a remessa vira a pendência "falta o relatório de remessas".
+- **Layout mudou?** Se um arquivo vier com coluna renomeada, ele não é usado e a pendência diz qual coluna faltou e quais vieram. As partes que não dependem dele fecham normalmente.
 
 ### Configuração opcional
 
@@ -116,10 +117,8 @@ O front fica em `web/` (React + TypeScript + Vite + Tailwind + motion) e já vai
 
 ## Limitações conhecidas
 
-- **Coluna renomeada dentro de um arquivo** (layout novo de um parceiro): o arquivo é reconhecido, mas a leitura falha com erro técnico em vez de uma mensagem clara.
 - **Atlas confirmada depois (R18):** quando o comercial confirmar a taxa, outubro precisa puxar as 57 transações de setembro. Hoje isso não é automático: elas ficam na pendência, identificadas pelo CNPJ.
 - **Ajuste de contestação da Ponte no mês seguinte (R27):** a regra está escrita (P21), mas não há caso em setembro e não está implementada.
-- **Remessa:** a contestação da Mundo Aberto e da duplicata ainda não sai como uma pendência por lojista (só nas divergências e no total do relatório). O spread negativo traz só o valor do relatório, sem a diferença até o contrato (R28.3).
 - **Provisão de folha e impostos do próprio mês:** não é gerada; o pacote não traz os valores.
 - **Colunas extras** além das pedidas: `causa_divergencia` nas divergências, `motivo` nos lançamentos e `metadata` no rastro. As colunas obrigatórias estão todas presentes, na ordem pedida.
 - **Numeração das linhas do Aurora:** conta a partir de 1, então a primeira transação é a `L9` (P1, não confirmada com a organização).

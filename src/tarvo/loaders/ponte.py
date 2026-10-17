@@ -9,6 +9,7 @@ import openpyxl
 import pandas as pd
 
 from tarvo import parse
+from tarvo.loaders.layout import exigir
 
 SHEET = "Operações"
 HEADER_ROW = 5
@@ -30,6 +31,9 @@ COLUMNS = {
     "Status Compliance": "status_compliance",
     "Observação": "observacao",
 }
+# Sem estas a remessa não fecha; IOF, estimado D-1 e observação são só informativos.
+OBRIGATORIAS = ["Nº Operação", "Data Contratação", "CNPJ Cliente", "Cliente", "Valor ME", "Taxa Cliente",
+                "PTAX Ref.", "Valor R$", "Spread R$", "Spread %", "Status Compliance"]
 NUMBER_COLS = ["valor_me", "taxa_cliente", "ptax_ref", "valor_brl", "spread_brl",
                "spread_pct", "spread_estimado_brl", "iof_brl"]
 
@@ -50,6 +54,7 @@ def load_ponte(path: Path) -> pd.DataFrame:
     ws = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)[SHEET]
     rows = list(ws.iter_rows(min_row=HEADER_ROW, values_only=True))
     header = list(rows[0])
+    exigir(path, header, OBRIGATORIAS)
     records = [
         {"linha_origem": HEADER_ROW + offset, **dict(zip(header, row, strict=False))}
         for offset, row in enumerate(rows[1:], start=1)

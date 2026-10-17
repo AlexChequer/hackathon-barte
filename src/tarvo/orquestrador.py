@@ -123,15 +123,18 @@ def run_closing(
     dados: Path, saida: Path, competencia: str | None = None, condicoes_path: Path | None = None
 ) -> ClosingResult:
     t0 = time.perf_counter()
-    sources, ausentes = load_disponiveis(dados)
+    sources, ausentes, layout = load_disponiveis(dados)
     presentes = set(FILES) - set(ausentes)
-    bloqueios = frentes.bloqueios(presentes)
+    bloqueios = frentes.bloqueios(presentes, layout)
     if not any(frentes.roda(f, presentes) for f in frentes.FRENTES):
         faltam = ", ".join(frentes.NOME_ARQUIVO[a] for a in ausentes)
-        raise FileNotFoundError(f"nenhuma parte do fechamento pode rodar; faltam: {faltam}")
+        detalhes = " ".join(layout.values())
+        raise FileNotFoundError(f"nenhuma parte do fechamento pode rodar; faltam: {faltam}. {detalhes}")
     for b in bloqueios:
         log.warning("frente %s %s: falta %s", b["frente"], "parcial" if b["parcial"] else "bloqueada",
                     ", ".join(b["faltando"]))
+    for mensagem in layout.values():
+        log.warning("layout: %s", mensagem)
     t_load = time.perf_counter() - t0
     if competencia is None:
         competencia = inferir_competencia(sources)

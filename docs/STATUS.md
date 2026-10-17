@@ -50,16 +50,16 @@ Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R6 extratos: PIX sem id, devolução, transferência em trânsito | ✅ trânsito por cruzamento dos bancos, sem data fixa |
 | R7/P7 divergência de remessa cheia, tolerância 0,01 p.p. | ✅ |
 | R9/R19/R25 contrapartida; provisão baixa no mês seguinte | ✅ |
-| R10/R12/R24.1 pendência de contestação por contraparte e lojista | ✅ Orbe × Rota, Orbe × Bridge, Tarvo × Casa · ❌ Ponte × Mundo Aberto, duplicata (Helio) |
+| R10/R12/R24.1 pendência de contestação por contraparte e lojista | ✅ Orbe × Rota, Orbe × Bridge, Tarvo × Casa, Ponte × Mundo Aberto, duplicata para corrigir o relatório |
 | R11/R12 `quem_decide` das pendências da Ponte = Financeiro | ✅ |
 | R16.6/R28.2/R32 alerta de antecipação só para lojista sem histórico (P22) | ✅ Atlas, pelo pico |
 | R18 Atlas confirmada depois: outubro puxa as linhas de setembro | ❌ |
 | R24.3 venda acima de 12x → pendência | ✅ (`SEM_TAXA_CONTRATADA`) |
 | R26 `saida/` com os 6 CSVs de setembro **na raiz** | ✅ |
 | R27 ajuste de contestação da Ponte no mês seguinte (P21) | ❌ sem caso em setembro |
-| R28.3 negativo com os dois valores (P23) | ❌ |
+| R28.3 negativo com os dois valores (P23) | ✅ |
 | O1 um comando, nada fixo para setembro, README com chave | ✅ código · ✅ `saida/` na raiz · ⚠️ README (seção do painel feita; resto com o André) |
-| R34 avisar quando o layout quebra; arquivo ausente não segura o mês | ✅ arquivo ausente fecha em parte (gap 18); arquivo com nome trocado é reconhecido pelo conteúdo · ❌ coluna renomeada dentro do arquivo (gap 17) |
+| R34 avisar quando o layout quebra; arquivo ausente não segura o mês | ✅ arquivo ausente fecha em parte (gap 18); arquivo com nome trocado é reconhecido pelo conteúdo · ✅ coluna renomeada vira bloqueio com mensagem clara (gap 17) |
 | P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
 ## Hardening do pipeline (17/10 tarde, commit `facce8b`)

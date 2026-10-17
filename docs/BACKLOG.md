@@ -27,14 +27,14 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | # | Gap | Regra | Dono | Bloqueia entrega? |
 |---|---|---|---|---|
 | 1 | ✅ Os 6 CSVs do último fechamento são gravados também na raiz de `saida/` e versionados (histórico, uploads e SQLite fora do git). **Antes do último commit, rodar `python -m tarvo --dados data/raw/set2026` e commitar `saida/*.csv`** | R26, O1 | **Alex** | — |
-| 2 | README: um comando, onde pôr os arquivos, `.env`, Laya experimental | O1 | **André** | **Sim** |
+| 2 | ✅ README completo (um comando, sem chave de API, painel, outro mês, saídas, garantias, limitações) | O1 | **Alex** | — |
 | 3 | Perguntar à organização: colunas extras (`rastro.metadata`, `lancamentos.motivo`) e L9 × L10 do Aurora | P1 | **André** | Talvez |
 | 4 | Extratos: `confianca` do PIX L50 < 1; motivo "remessa de outubro" no `MRD2026090425` | R6, R16.5 | **André** | Não |
 | 5 | Provisão de folha/impostos de setembro (aguarda resposta à Datarmos) | R19 | **André** | Não |
-| 6 | Pendência de contestação **Ponte × Mundo Aberto** por lojista, 23 operações no rastro | R10, R12, R24.1 | **Helio** | Não |
-| 7 | Duplicata `PC-0926-0162` como pendência (Ponte corrigir o relatório) | R12 | **Helio** | Não |
+| 6 | ✅ Pendência de contestação **Ponte × Mundo Aberto** por lojista, 23 operações no rastro | R10, R12, R24.1 | **Helio** | Não |
+| 7 | ✅ Duplicata `PC-0926-0162` como pendência (Ponte corrigir o relatório) | R12 | **Helio** | Não |
 | 8 | ✅ `quem_decide` = Financeiro em todas as pendências da remessa (`RM-CONTEST`, duplicata conflitante, status desconhecido, spread ausente) | R11, R12 | **Helio** (feito pelo Alex) | Não |
-| 9 | Negativo com dois valores: spread do relatório + diferença até o contrato | R28.3, P23 | **Helio** | Não |
+| 9 | ✅ Negativo com dois valores: spread do relatório + diferença até o contrato | R28.3, P23 | **Helio** | Não |
 | 10 | Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece (teste sintético) | R27, P21 | **Helio** | Não |
 | 11 | ✅ Pendência de contestação **Orbe × Rota** (R$ 1.546,28) e **Orbe × Bridge** (R$ 29,95) por lojista, `CONTESTACAO_ORBE`, valor líquido | R1, R16.3, R24.1, R28.1 | **Alex** | Não |
 | 12 | ✅ Alerta de antecipação para lojista sem histórico, pelo pico (Atlas: 15/09, R$ 179.592,82 × R$ 55.357,50) | R16.6, R28.2, R32, P22 | **Alex** | Não |
@@ -42,7 +42,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 14 | Atlas confirmada depois: outubro puxa as linhas pendentes de setembro | R18 | **Alex** | Não |
 | 15 | Relatório de pendências por quem decide | R1, R24.1 | **Alex** | Não |
 | 16 | ✅ Painel (`python -m tarvo.web`): pendências por quem decide, rastro clicável de todo valor, divergências por natureza, lançamentos, **formulário de condição comercial** e decisão de sinal (grava em `config/condicoes_comerciais.json` e refaz o fechamento), upload dos arquivos do mês | P19, P20, O1 | **Alex** | Não |
-| 17 | **Layout:** validar colunas/abas de cada arquivo na entrada; mudança de layout → erro claro dizendo arquivo, coluna esperada e encontrada (hoje: traceback `KeyError`) | R34, O1 | a definir | Não, mas pesa em "roda em outubro" |
+| 17 | ✅ **Layout:** cada loader confere as colunas de que precisa; arquivo com layout diferente não é usado, a frente fica bloqueada e a pendência/faixa do painel dizem o arquivo, a coluna que falta e as que vieram (`tarvo.loaders.layout`) | R34 | **Alex** | — |
 | 18 | ✅ **Arquivo ausente:** fecha as frentes que não dependem dele e gera `FRENTE_BLOQUEADA` (P25). Tela avisa em amarelo o que não vai sair e fecha "o que der"; faixa "Fechamento parcial" no painel | R34 | **Alex** | — |
 
 A partir das 17h: André confere a saída final contra a `solucao_minimo` (validação independente; essa branch **não** é mergeada).
