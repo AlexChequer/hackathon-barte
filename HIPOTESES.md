@@ -103,6 +103,8 @@ Rascunhos em `docs/PERGUNTAS_FINANCEIRO.md`.
 
 Material de apoio "Do Cartão ao Caixa" (09h15): só papéis do arranjo (portador, lojista, subadquirente, adquirente, bandeira, emissor). Nenhuma regra nova.
 
+| O2 | 13h10 | "A Orbe mandou os ajustes de setembro que ficaram fora do relatório: `06_orbe_ajustes_tardios_set2026.csv`. São só 14 linhas, no mesmo formato do arquivo 01. Se a solução de vocês já recebe os arquivos do mês, deve bastar rodar de novo. **O fechamento entregue às 18h30 precisa considerar esse arquivo.**" | Loader opcional `*_orbe_ajustes_*.csv` junto da Orbe; checkout R$ 203.735,34 |
+
 ## Aguardando resposta (perguntas públicas de outros times)
 
 As de 08h43–09h29 foram respondidas (R15–R19). Falta:

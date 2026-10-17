@@ -18,7 +18,7 @@ def sources():
 
 def test_orbe_has_all_rows_with_traceable_line(sources):
     orbe = sources["orbe"]
-    assert len(orbe) == 1943
+    assert (orbe["arquivo_origem"] == "orbe").sum() == 1943
     assert orbe["id_transacao"].is_unique
     assert orbe["linha_origem"].iloc[0] == 2
 
@@ -61,3 +61,19 @@ def test_plano_has_postable_accounts(sources):
     plano = sources["plano"]
     assert plano["aceita_lancamento"].any()
     assert "3.1.01" in set(plano["COD_CONTA"])
+
+
+def test_ajustes_tardios_da_orbe_entram_na_mesma_base_com_arquivo_de_origem(sources):
+    """Arquivo 06 (13h10 de 17/10): mesmo formato do 01; opcional; pode haver mais de um."""
+    orbe = sources["orbe"]
+    assert len(orbe) == 1943 + 14
+    assert orbe["id_transacao"].is_unique
+    origem = orbe.set_index("id_transacao")["arquivo_origem"]
+    assert origem["TX88447225"] == "orbe_ajustes" and origem["TX88410932"] == "orbe"
+
+
+def test_sem_arquivo_de_ajustes_continua_funcionando(tmp_path):
+    for f in DATA.iterdir():
+        if not f.name.startswith("06_"):
+            (tmp_path / f.name).write_bytes(f.read_bytes())
+    assert len(load_all(tmp_path)["orbe"]) == 1943

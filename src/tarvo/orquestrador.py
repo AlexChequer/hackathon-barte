@@ -21,7 +21,7 @@ import pandas as pd
 
 from tarvo import output, persistencia, rules, sinais
 from tarvo.engines import checkout, extratos, remessa
-from tarvo.loaders import FILES, load_all
+from tarvo.loaders import FILES, OPCIONAIS, load_all
 
 log = logging.getLogger("tarvo.orq")
 
@@ -84,6 +84,16 @@ def inferir_competencia(sources: dict[str, pd.DataFrame]) -> str:
     return str(contagem.index[0])
 
 
+def _rastro_com_arquivo_da_orbe(rastro: pd.DataFrame, orbe: pd.DataFrame) -> pd.DataFrame:
+    """Os motores marcam toda linha da Orbe como "orbe"; aqui cada ref aponta o arquivo real."""
+    if rastro.empty or "arquivo_origem" not in orbe:
+        return rastro
+    arquivo_por_id = dict(zip(orbe["id_transacao"].astype(str), orbe["arquivo_origem"], strict=True))
+    da_orbe = rastro["arquivo_origem"] == "orbe"
+    novo = rastro["ref_origem"].astype(str).map(arquivo_por_id)
+    return rastro.assign(arquivo_origem=rastro["arquivo_origem"].where(~da_orbe | novo.isna(), novo))
+
+
 def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> ClosingResult:
     t0 = time.perf_counter()
     sources = load_all(dados)
@@ -92,7 +102,11 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
         competencia = inferir_competencia(sources)
         log.info("competência inferida dos dados: %s", competencia)
 
-    hashes = {k: _hash(dados / sorted(dados.glob(FILES[k]))[0].name) for k in FILES}
+    hashes = {
+        f.name: _hash(f)
+        for padrao in [*FILES.values(), *OPCIONAIS.values()]
+        for f in sorted(dados.glob(padrao))
+    }
     commit = _git_commit(dados.parent.parent)
 
     t = time.perf_counter()
@@ -116,7 +130,9 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
     notas = _mesclar([r_ck.notas, r_rm.notas])
     lancamentos = r_ex.lancamentos
     pendencias = _mesclar([r_ck.pendencias, r_rm.pendencias, r_ex.pendencias, r_sn.pendencias])
-    rastro = _mesclar([r_ck.rastro, r_rm.rastro, r_ex.rastro, r_sn.rastro])
+    rastro = _rastro_com_arquivo_da_orbe(
+        _mesclar([r_ck.rastro, r_rm.rastro, r_ex.rastro, r_sn.rastro]), sources["orbe"]
+    )
 
     # Validação de rastro por saída monetária (igualdade exata em centavos).
     problemas = []
@@ -157,7 +173,10 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
 
     # Cobertura: toda entrada relevante tem que ter saída (comissão, divergência, pendência ou lançamento).
     entradas_esperadas = {
-        "orbe": set(sources["orbe"]["id_transacao"].astype(str).unique()),
+        **{
+            arquivo: set(grupo["id_transacao"].astype(str))
+            for arquivo, grupo in sources["orbe"].groupby("arquivo_origem")
+        },
         "ponte": set(sources["ponte"]["n_operacao"].astype(str).unique()),
         "aurora": set(sources["aurora"]["ref_origem"].astype(str).unique()),
         "meridiano": set(sources["meridiano"]["ref_origem"].astype(str).unique()),
