@@ -61,3 +61,23 @@ def vigente(condicoes: tuple[Condicao, ...], cnpj: str, data: dt.date, coluna: s
     """Condição que define a taxa de `coluna` para o CNPJ na data, ou None."""
     candidatas = [c for c in condicoes if c.cnpj == cnpj and coluna in c.taxas and c.vale_em(data)]
     return max(candidatas, key=lambda c: c.inicio) if candidatas else None
+
+
+@dataclass(frozen=True)
+class SinalResolvido:
+    """Texto da planilha já analisado (ex.: renegociação que já está na própria planilha)."""
+
+    cnpj: str
+    texto: str
+    decisao: str
+    fonte: str
+
+
+def carregar_sinais_resolvidos(caminho: Path = CAMINHO_PADRAO) -> tuple[SinalResolvido, ...]:
+    if not caminho.exists():
+        return ()
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    return tuple(
+        SinalResolvido(str(i["cnpj"]).zfill(14), i["texto"].strip(), i["decisao"], i["fonte"])
+        for i in dados.get("sinais_resolvidos", [])
+    )

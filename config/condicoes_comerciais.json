@@ -21,5 +21,32 @@
       "registrado_por": "Fox AI",
       "registrado_em": "2026-10-17"
     }
+  ],
+  "_comentario_sinais": "Sinais de texto da planilha (obs/comentários) já analisados. Não viram pendência de novo enquanto o texto for o mesmo.",
+  "sinais_resolvidos": [
+    {
+      "cnpj": "22224579000109",
+      "texto": "renegociado - ver linha de baixo",
+      "decisao": "ja_na_planilha",
+      "fonte": "Planilha L6/L7: nova taxa de crédito à vista com vigência a partir de 15/09",
+      "registrado_por": "Fox AI",
+      "registrado_em": "2026-10-17"
+    },
+    {
+      "cnpj": "22224579000109",
+      "texto": "só mudou o crédito à vista",
+      "decisao": "ja_na_planilha",
+      "fonte": "Planilha L7 (vigência a partir de 15/09)",
+      "registrado_por": "Fox AI",
+      "registrado_em": "2026-10-17"
+    },
+    {
+      "cnpj": "17217888000111",
+      "texto": "spread negociado em jul/26",
+      "decisao": "ja_na_planilha",
+      "fonte": "R5: 1,20% de spread já está na planilha (L15)",
+      "registrado_por": "Fox AI",
+      "registrado_em": "2026-10-17"
+    }
   ]
 }

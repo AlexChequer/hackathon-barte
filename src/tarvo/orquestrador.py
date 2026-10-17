@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from tarvo import output, persistencia, rules
+from tarvo import output, persistencia, rules, sinais
 from tarvo.engines import checkout, extratos, remessa
 from tarvo.loaders import FILES, load_all
 
@@ -107,12 +107,16 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
     r_ex = extratos.run(sources["aurora"], sources["meridiano"], sources["plano"], competencia)
     t_ex = time.perf_counter() - t
 
+    t = time.perf_counter()
+    r_sn = sinais.run(sources["taxas"], competencia, sinais.classificador_padrao())
+    t_sn = time.perf_counter() - t
+
     comissoes = _mesclar([r_ck.comissoes, r_rm.comissoes])
     divergencias = _mesclar([r_ck.divergencias, r_rm.divergencias])
     notas = _mesclar([r_ck.notas, r_rm.notas])
     lancamentos = r_ex.lancamentos
-    pendencias = _mesclar([r_ck.pendencias, r_rm.pendencias, r_ex.pendencias])
-    rastro = _mesclar([r_ck.rastro, r_rm.rastro, r_ex.rastro])
+    pendencias = _mesclar([r_ck.pendencias, r_rm.pendencias, r_ex.pendencias, r_sn.pendencias])
+    rastro = _mesclar([r_ck.rastro, r_rm.rastro, r_ex.rastro, r_sn.rastro])
 
     # Validação de rastro por saída monetária (igualdade exata em centavos).
     problemas = []
@@ -173,6 +177,7 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
         "checkout": round(t_ck, 3),
         "remessa": round(t_rm, 3),
         "extratos": round(t_ex, 3),
+        "sinais": round(t_sn, 3),
         "total": round(time.perf_counter() - t0, 3),
     }
 

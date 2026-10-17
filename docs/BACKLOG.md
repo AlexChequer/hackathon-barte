@@ -36,7 +36,7 @@ Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relat�
 ## Checkout
 
 - [x] 📋 **Casa do Estudante como condição comercial** (P19): 118 linhas `CK-COND-*` + 1 pendência `CONDICAO_NAO_INFORMADA_ORBE` (R$ 15.397,42, Financeiro + Comercial). A cobrar da Orbe: só `CK-DIV-*` (R$ 1.576,23).
-- [ ] 🟢 📋 **Detector de sinais** (obs, comentários, cabeçalho): palavras-chave + classificador binário plugável (Ollama/Llama, hospedado ou Haiku via `.env`; sem chave = só palavras-chave). Sinal sem condição registrada → pendência `CONDICAO_ESPECIAL_A_CONFIRMAR` (Comercial).
+- [x] 📋 **Detector de sinais** (`tarvo.sinais`): obs + comentários da planilha → palavras-chave **ou** Laya `noul` (open source, local, `laya==0.4.8`, modelo `multilingual`, corte 0,5, só sim/não). Sinal sem condição registrada nem resolução → pendência `CONDICAO_ESPECIAL_A_CONFIRMAR` (Comercial, valor 0, rastro na linha da planilha). Sem o pacote ou com `TARVO_CLASSIFICADOR=nenhum`: só palavras-chave. Em set/2026 marca Bridge L6, Casa L13 (×2) e Mundo Aberto L15, todos AMBOS; todos cobertos (COND-0001 ou `sinais_resolvidos`) → 0 pendências novas.
 - [ ] 🟢 **Tela: responder pendência de condição** grava em `config/condicoes_comerciais.json` (campos estruturados + texto; classificador binário decide se o texto é útil para guardar).
 - [ ] 🟢 Condição ativa mas planilha/Orbe ainda na taxa antiga → pendência "atualizar planilha e avisar a Orbe" (já sai no motivo); alerta de vencimento (≤ 30 dias).
 
