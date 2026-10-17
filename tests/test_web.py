@@ -112,3 +112,21 @@ def test_upload_completo_fecha_o_mes(cliente):
     r = cliente.post("/api/arquivos", files=_arquivos(nomes))
     assert r.status_code == 200, r.text
     assert r.json()["totais"]["comissao_checkout"] == "203735.34"
+
+
+def test_conferir_reconhece_renomeado_pelo_conteudo_sem_gravar(cliente, tmp_path):
+    orbe = (DATA / "01_orbe_relatorio_comissoes_set2026.csv").read_bytes()
+    arquivos = [("arquivos", ("Relatorio Orbe Outubro.csv", orbe))]
+    r = cliente.post("/api/arquivos/conferir", files=arquivos).json()
+    assert r["arquivos"][0]["chave"] == "orbe" and r["arquivos"][0]["por"] == "conteudo"
+    assert any("faltando" in p for p in r["problemas"])
+
+
+def test_upload_com_nomes_trocados_fecha_igual(cliente):
+    renomear = {"01_": "orbe out.csv", "02_": "taxas (1).xlsx", "03_": "ponte.eml", "04_": "plano.csv",
+                "05a": "aurora.csv", "05b": "meridiano.ofx"}
+    arquivos = [("arquivos", (renomear.get(f.name[:3], f.name), f.read_bytes()))
+                for f in DATA.iterdir() if not f.name.startswith("00_")]
+    r = cliente.post("/api/arquivos", files=arquivos)
+    assert r.status_code == 200, r.text
+    assert r.json()["totais"]["comissao_checkout"] == "203735.34"

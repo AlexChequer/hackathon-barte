@@ -5,7 +5,6 @@ Cada loader devolve um DataFrame novo com colunas normalizadas e uma coluna de r
 Interpretação (vigência, 'padrão', duplicadas, spread negativo...) fica no motor, não aqui.
 """
 
-from fnmatch import fnmatch
 from pathlib import Path
 
 import pandas as pd
@@ -52,22 +51,6 @@ ESPERADOS = [
      "descricao": "se a Orbe mandar depois do relatório; zero ou mais (CSV)"},
 ]
 IGNORADOS = ["00_LEIA-ME*"]
-
-
-def validar_lote(nomes: list[str]) -> list[str]:
-    """Problemas de um lote de upload: obrigatório faltando ou repetido, arquivo desconhecido."""
-    problemas = []
-    for nome in nomes:
-        conhecido = any(fnmatch(nome, e["padrao"]) for e in ESPERADOS)
-        if not conhecido and not any(fnmatch(nome, p) for p in IGNORADOS):
-            problemas.append(f"{nome}: não é um arquivo do fechamento")
-    for e in (e for e in ESPERADOS if e["obrigatorio"]):
-        achados = [n for n in nomes if fnmatch(n, e["padrao"])]
-        if not achados:
-            problemas.append(f"faltando: {e['nome']} ({e['padrao']})")
-        elif len(achados) > 1:
-            problemas.append(f"mais de um {e['nome']}: {', '.join(achados)}")
-    return problemas
 
 
 def find_file(data_dir: Path, key: str) -> Path:
