@@ -62,8 +62,8 @@ Todos os arquivos usam separador `;`, decimal `.`, datas `AAAA-MM-DD` e CNPJ com
 | `divergencias_taxa.csv` | Transação a transação, quando a taxa cobrada difere da contratada. O `id_saida` diz a natureza (`CK-DIV`, `CK-COND`, `RM-DIV`) e `causa_divergencia` diz o porquê no checkout | 233 linhas |
 | `notas_a_emitir.csv` | Uma nota por lojista no checkout e uma única para a Ponte Câmbio; saldo ≤ 0 não emite | 21 notas |
 | `lancamentos_classificados.csv` | Cada movimento dos extratos com a conta de contrapartida no plano | 184 linhas, todas por regra |
-| `pendencias.csv` | O que precisa de uma pessoa: tipo, valor em jogo, motivo e quem decide | 14 pendências |
-| `rastro.csv` | Para cada número de saída, as linhas de origem que somam até ele | 4.835 linhas |
+| `pendencias.csv` | O que precisa de uma pessoa: tipo, valor em jogo, motivo e quem decide | 16 pendências |
+| `rastro.csv` | Para cada número de saída, as linhas de origem que somam até ele | 4.981 linhas |
 
 ### Garantias, verificadas a cada execução
 
@@ -74,7 +74,7 @@ Todos os arquivos usam separador `;`, decimal `.`, datas `AAAA-MM-DD` e CNPJ com
 - **Nada inventado:** lojista sem contrato não fatura, e taxa ausente vira pendência. Lojista é identificado por EC ou CNPJ, nunca por nome.
 - **Dados originais intactos:** os arquivos de `data/raw/` nunca são editados. Um teste confere o checksum de cada um.
 
-Validação em setembro: 120 testes automatizados, 14 de 14 casos de uma referência montada à mão e uma implementação independente do checkout (branch `solucao_minimo`) chegando aos mesmos valores por lojista.
+Validação em setembro: 186 testes automatizados, 14 de 14 casos de uma referência montada à mão e uma implementação independente do checkout (branch `solucao_minimo`) chegando aos mesmos valores por lojista.
 
 ## Como funciona
 
