@@ -6,11 +6,11 @@ import { Condicoes } from "./components/Condicoes";
 import { Pendencias } from "./components/Pendencias";
 import { Rastro, type AlvoRastro } from "./components/Rastro";
 import { Upload } from "./components/Upload";
-import { Divergencias, Lancamentos, Numeros } from "./components/Tabelas";
+import { Divergencias, Lancamentos, Numeros, Rastro as RastroTabela } from "./components/Tabelas";
 import { RastroContext } from "./components/Valor";
 import { ARQUIVO, FRENTE, competencia as nomeCompetencia } from "./format";
 
-type Tela = "pendencias" | "numeros" | "divergencias" | "lancamentos" | "condicoes";
+type Tela = "pendencias" | "numeros" | "divergencias" | "lancamentos" | "rastro" | "condicoes";
 
 export default function App() {
   const [f, setF] = useState<Fechamento | null>(null);
@@ -59,6 +59,7 @@ export default function App() {
     ["numeros", "Comissões e notas", null],
     ["divergencias", "Divergências", f?.tabelas.divergencias.length ?? null],
     ["lancamentos", "Lançamentos", f?.tabelas.lancamentos.length ?? null],
+    ["rastro", "Rastro", null],
     ["condicoes", "Condições comerciais", null],
   ];
 
@@ -181,6 +182,7 @@ export default function App() {
                     {tela === "numeros" && <Numeros f={f} />}
                     {tela === "divergencias" && <Divergencias f={f} />}
                     {tela === "lancamentos" && <Lancamentos f={f} />}
+                    {tela === "rastro" && <RastroTabela f={f} />}
                     {tela === "condicoes" && (
                       <Condicoes
                         fechamento={f}

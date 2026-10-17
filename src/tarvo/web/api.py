@@ -133,6 +133,10 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
     def post_fechar() -> dict:
         return resposta(fechar())
 
+    @app.get("/api/rastro")
+    def get_rastro_completo() -> dict:
+        return {"linhas": _registros(resultado().rastro)}
+
     @app.get("/api/rastro/{id_saida}")
     def get_rastro(id_saida: str) -> dict:
         rastro = resultado().rastro
