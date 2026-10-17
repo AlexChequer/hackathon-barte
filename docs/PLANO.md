@@ -15,9 +15,9 @@
 
 | Frente | Dono | Escopo | Módulo |
 |---|---|---|---|
-| A. Checkout | _a definir_ | Orbe × taxas: casar o EC, achar a taxa contratada e a vigência, calcular comissão e divergências | `src/tarvo/engines/checkout.py` |
-| B. Remessa | _a definir_ | Ponte: duplicadas, spread negativo, spread contratado, comissão de 50%, notas | `src/tarvo/engines/remessa.py` |
-| C. Extratos + entrega | _a definir_ | Classificar Aurora/Meridiano no plano (regra primeiro, IA só no resto), pendências, README, pitch | `src/tarvo/engines/extratos.py` |
+| A. Checkout | Alex | Orbe × taxas: casar o EC, achar a taxa contratada e a vigência, calcular comissão e divergências | `src/tarvo/engines/checkout.py` |
+| B. Remessa | Helio | Ponte: duplicadas, spread negativo, spread contratado, comissão de 50%, notas | `src/tarvo/engines/remessa.py` |
+| C. Extratos + entrega | André | Classificar Aurora/Meridiano no plano (regra primeiro, IA só no resto), pendências, README, pitch | `src/tarvo/engines/extratos.py` |
 
 Quem fecha uma frente revisa os números da outra. **Ninguém aceita um número sem conferir uma amostra na mão.**
 

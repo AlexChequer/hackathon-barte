@@ -12,6 +12,10 @@
 - ✅ R5 (MN AI): remessa = 50% do spread realizado; padrão 1,5%; Mundo Aberto é divergência; negativo fora; duplicada conta 1x; ressalva normal; competência = contratação.
 - ✅ R6 (Lucca): Rota Global é divergência; Casa do Estudante tem tarifa zero set–dez; folha/impostos e repasse Ponte são de agosto (provisionados); PIX sem id, devolução e transferência em trânsito são pendências.
 
+- ✅ R7: a divergência de remessa é o valor cheio; a tolerância é nossa, escrita com motivo (P7: 0,01 p.p.).
+
+> **Perguntas abertas por pessoa: ver `docs/STATUS.md`.**
+
 > Helena: "Para o que aparecer fora disso, **me digam como vocês tratariam e por quê**." Daqui em diante, as perguntas devem **propor o tratamento** e pedir confirmação.
 
 ## Fila, em ordem de prioridade

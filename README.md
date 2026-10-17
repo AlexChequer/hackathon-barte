@@ -34,6 +34,7 @@ Para outubro, basta apontar `--dados` para a pasta com os arquivos novos, no mes
 
 ## Documentação
 
+- `docs/STATUS.md`: **comece aqui**. Estado atual, regras fechadas, frentes e perguntas abertas.
 - `HIPOTESES.md`: fatos, premissas e perguntas/respostas do financeiro.
 - `docs/CONTEXTO.md`: o negócio explicado, onde está o problema e por que cada dúvida importa.
 - `docs/MAPA_DADOS.md`: o que tem em cada arquivo e as armadilhas encontradas.
