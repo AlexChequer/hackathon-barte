@@ -27,7 +27,7 @@ CHAVE = re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9]{20,}")
 
 
 def pasta_do_projeto() -> Path:
-    chave = re.sub(r"[/_.]", "-", str(REPO))
+    chave = re.sub(r"[^A-Za-z0-9]", "-", str(REPO))  # como o Claude Code nomeia a pasta (inclui espaços)
     return Path.home() / ".claude" / "projects" / chave
 
 
