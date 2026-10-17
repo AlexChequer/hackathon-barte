@@ -1,0 +1,2 @@
+id_saida;tipo;ref_origem;valor_brl;motivo;quem_decide
+PEND-EC-1076801732;EC_SEM_CNPJ;EC:1076801732;7876.05;"EC 1076801732 (ATLAS IDIOMAS) com 57 linhas na Orbe: EC não aparece na aba 'Taxas vigentes' nem no de-para confirmado pelo financeiro. Sem CNPJ e contrato não há comissão nem nota; valor_brl é o que a Orbe cobrou dessas linhas";Comercial

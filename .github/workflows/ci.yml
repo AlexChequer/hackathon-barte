@@ -8,7 +8,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: ruff check .
+      - run: pip install -r requirements.txt
       - run: pytest -q
-      - run: python -m tarvo --dados data/raw/set2026 --saida saida
+      - run: python -m src.main --dados data/raw/set2026 --saida saida/

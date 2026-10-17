@@ -1,0 +1,43 @@
+{
+  "_comentario": "Regras de negócio da comissão de CHECKOUT. Cada chave cita a resposta do financeiro (HIPOTESES.md) que a sustenta. Mudou a regra, muda aqui, não no código.",
+
+  "base_comissao": "bruto_x_taxa_contratada",
+  "_base_comissao": "R1: fatura pela taxa contratada, linha a linha. O valor_taxa da Orbe é o que ela cobrou, não a comissão.",
+
+  "arredondamento": "ROUND_HALF_UP",
+  "_arredondamento": "R8: arredondamento comum ao centavo, por linha, depois soma. A Orbe trunca; a Tarvo não.",
+
+  "incluir_antecipacao": true,
+  "_incluir_antecipacao": "R4: a antecipação entra na mesma nota, pela taxa contratada de antecipação.",
+
+  "reversao_anula_antecipacao_referenciada": true,
+  "_reversao_anula_antecipacao_referenciada": "R4: a reversão só anula a taxa da antecipação que ela reverte (id_referencia).",
+
+  "estorno_taxa_da_venda_original": true,
+  "_estorno_taxa_da_venda_original": "R2: estorno abate no mês do estorno, com a taxa vigente na data da venda original (inclui vendas de agosto).",
+
+  "de_para_ec": {
+    "1043300981": {"cnpj": "66564512000199", "fonte": "R3: HORIZONTE INTERCAMBIO é a Novo Horizonte Intercâmbio"},
+    "1043396662": {"cnpj": "78576234000179", "fonte": "R3: HORIZONTE VIAGENS TURISMO é a Horizonte Viagens e Turismo"},
+    "1038867654": {"cnpj": "07752116000126", "fonte": "R3: KIWI EXPERIENCE TURISMO é a Kiwi Experience"}
+  },
+  "_de_para_ec": "ECs sem 'EC Orbe' na planilha, ligados pela Helena por escrito. Não é casamento por nome: o CNPJ vem da linha indicada por ela.",
+
+  "isencoes": [
+    {
+      "cnpj": "00520815000100",
+      "inicio": "2026-09-01",
+      "fim": "2026-12-31",
+      "fonte": "R6: Casa do Estudante tem tarifa zerada no checkout de setembro a dezembro (MDR e antecipação)"
+    }
+  ],
+  "_isencoes": "Taxa contratada = 0% para vendas/antecipações com data dentro do período. Estorno de venda anterior ao início usa a taxa histórica (R2).",
+
+  "ec_sem_cnpj": "pendencia",
+  "_ec_sem_cnpj": "CLAUDE.md + R3: EC sem CNPJ não fatura e nunca recebe CNPJ inventado; vira pendência com o valor cobrado pela Orbe.",
+  "quem_decide_ec_sem_cnpj": {
+    "1076801732": "Comercial"
+  },
+  "_quem_decide_ec_sem_cnpj": "R3: Atlas não fatura até o comercial confirmar contrato. Demais ECs sem vínculo: Financeiro.",
+  "quem_decide_padrao": "Financeiro"
+}

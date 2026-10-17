@@ -1,48 +1,49 @@
-# Tarvo: fechamento mensal
+# Tarvo: comissão de checkout (solução mínima)
 
 Hackathon Barte AI (17/10/2026). Time: [@AlexChequer](https://github.com/AlexChequer), [@hhenriqueN](https://github.com/hhenriqueN), [@andrespleite](https://github.com/andrespleite).
 
-Motor que fecha o mês da Tarvo Pagamentos a partir dos arquivos **como eles chegam** (portal da Orbe, e-mail da Ponte Câmbio, planilha de taxas, extratos Aurora/Meridiano, plano de contas Fênix). Ele gera em `saida/`:
+Calcula a **comissão de CHECKOUT de cada lojista** da Tarvo no mês, a partir do relatório da Orbe e da planilha de taxas **como eles chegam**, e liga cada centavo à transação de origem.
 
-| Arquivo | Conteúdo | Status |
-|---|---|---|
-| `comissoes_por_lojista.csv` | Comissão por lojista e linha de negócio | 🚧 |
-| `divergencias_taxa.csv` | Taxa contratada × aplicada, transação por transação | 🚧 |
-| `notas_a_emitir.csv` | Notas fiscais: tomador, linha e valor | 🚧 |
-| `lancamentos_classificados.csv` | Extratos classificados no plano de contas | 🚧 |
-| `pendencias.csv` | O que exige uma pessoa: motivo e quem decide | 🚧 |
-| `rastro.csv` | Liga cada número de saída às linhas de origem | 🚧 |
+| Arquivo em `saida/` | Conteúdo |
+|---|---|
+| `comissoes_por_lojista.csv` | Uma linha por CNPJ: comissão pela taxa contratada (+ extras `qtd_transacoes`, `ecs`, `cobrado_orbe_brl`) |
+| `rastro.csv` | Uma linha por transação da Orbe, com o `id_saida` a que ela pertence. A soma por `id_saida` bate com a saída |
+| `pendencias.csv` | O que exige uma pessoa: motivo, valor e quem decide |
+| `controle.json` | Totais por tipo, Σ comissões, Σ pendências e diferença de fechamento (tem que ser 0.00) |
 
 ## Como rodar do zero
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-python -m tarvo --dados data/raw/set2026 --saida saida
-pytest
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python -m src.main --dados data/raw/set2026 --saida saida/
+pytest -q
 ```
 
-Para outubro, basta apontar `--dados` para a pasta com os arquivos novos, no mesmo formato. Os arquivos são localizados por padrão de nome (`src/tarvo/loaders/__init__.py`).
+**Outubro:** aponte `--dados` para a pasta nova. Os arquivos são achados por padrão de nome (`01_orbe_relatorio_comissoes_*.csv`, `02_tabela_taxas_contratadas*.xlsx`), e o cabeçalho da planilha pela célula "Lojista".
 
-**Chaves necessárias:** nenhuma por enquanto. Se a classificação por IA entrar, ver `.env.example`.
+**Chaves necessárias:** nenhuma. Não há IA em tempo de execução; o cálculo é Python com `Decimal`.
 
-## Como funciona
+## Como o número é calculado
 
-1. **Loaders** (`src/tarvo/loaders/`): leem cada fonte sem regra de negócio. Eles normalizam números pt-BR, datas, CNPJ (14 dígitos) e encoding, e guardam a referência da linha de origem.
-2. **Motores** (`src/tarvo/engines/`, 🚧): aplicam as regras confirmadas com o financeiro (`HIPOTESES.md`).
-3. **Saída** (`src/tarvo/output.py`): escreve no formato fixo do case e confere que cada total bate com a soma do rastro.
+1. **Quem é o lojista:** o EC da Orbe é ligado ao CNPJ pela coluna "EC Orbe" da planilha, ou pelo de-para que o financeiro confirmou (R3). Nunca pelo nome.
+2. **Quanto:** valor bruto × taxa contratada vigente na data da venda, arredondado ao centavo por linha (R1, R8). Estorno usa a taxa da venda original (R2); reversão anula a antecipação que ela reverte (R4); Casa do Estudante tem taxa zero de setembro a dezembro (R6).
+3. **O que não dá para calcular vira pendência**, com o valor que a Orbe cobrou e quem decide. Não fatura.
 
-## Documentação
+As regras ficam em `src/premissas.json`; cada uma cita a resposta do financeiro em `HIPOTESES.md`.
 
-- `docs/STATUS.md`: **comece aqui**. Estado atual, regras fechadas, frentes e perguntas abertas.
-- `HIPOTESES.md`: fatos, premissas e perguntas/respostas do financeiro.
-- `docs/CONTEXTO.md`: o negócio explicado, onde está o problema e por que cada dúvida importa.
-- `docs/MAPA_DADOS.md`: o que tem em cada arquivo e as armadilhas encontradas.
-- `docs/PERGUNTAS_FINANCEIRO.md`: rascunho das perguntas.
-- `docs/PLANO.md`: divisão do time e linha do tempo.
-- `docs/case/`: instruções originais do case.
-- `PROMPTS/`: histórico das sessões de IA e `MOMENTOS.md`.
+## Código
+
+- `src/leitura.py`: lê Orbe e planilha; normaliza número pt-BR, data, CNPJ e taxa
+- `src/cadastro.py`: EC → CNPJ e taxa vigente numa data
+- `src/calculo.py`: comissão por linha, pendências, rastro e conferência
+- `src/escrita.py`: CSVs no formato fixo
+- `src/main.py`: linha de comando
+- `tests/test_comissao.py`: controles recalculados a partir do arquivo cru
 
 ## Limitações conhecidas
 
-- _a preencher_
+- Só a linha CHECKOUT. Remessa, divergências de taxa, notas fiscais e extratos estão fora deste escopo (a solução completa está na branch `main`).
+- Atlas (EC 1076801732) não tem contrato vigente: fica como pendência para o Comercial e não entra na comissão.
+- Isenções e de-para de EC estão em `premissas.json`; uma isenção ou EC novo em outubro precisa ser acrescentado lá depois da confirmação do financeiro.
+- Comissão negativa (Casa do Estudante, −5,50) é reportada como está; o tratamento na nota (R4) é do nível alvo.

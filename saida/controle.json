@@ -1,0 +1,25 @@
+{
+  "linhas_orbe": 1943,
+  "linhas_rastro": 1943,
+  "orbe_valor_taxa_por_tipo": {
+    "VENDA": "214558.33",
+    "ESTORNO": "-7108.69",
+    "ANTECIPACAO": "30491.41",
+    "REVERSAO ANTECIPACAO": "-6060.69"
+  },
+  "orbe_qtd_por_tipo": {
+    "VENDA": 1840,
+    "ESTORNO": 59,
+    "ANTECIPACAO": 38,
+    "REVERSAO ANTECIPACAO": 6
+  },
+  "soma_valor_taxa_orbe": "231880.36",
+  "soma_comissoes_contratadas": "207039.73",
+  "soma_cobrado_orbe_nas_linhas_faturadas": "224004.31",
+  "cobrado_orbe_menos_contratado": "16964.58",
+  "soma_pendencias": "7876.05",
+  "soma_fora": "0.00",
+  "diferenca_fechamento": "0.00",
+  "qtd_lojistas_com_comissao": 21,
+  "qtd_pendencias": 1
+}

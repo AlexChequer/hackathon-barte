@@ -60,3 +60,36 @@ Canal: `#duvidas-hackathon-ai` (o `#tarvo-financeiro` não foi criado; a organiz
 | P15 | **Decisão de encaminhamento** (devolver ao lojista, cobrar da Orbe, contestar com a Ponte, baixar via acordo etc.) **não altera** o reconhecimento da comissão contratual, nem o valor da divergência. É um estado da pendência; não gera lançamentos automáticos neste MVP | R1 (Helena: "isso eu decido, não vai automático") |
 
 Rascunhos em `docs/PERGUNTAS_FINANCEIRO.md`.
+
+## Solução mínima (branch `solucao_minimo`): comissão de CHECKOUT com rastro
+
+Escopo: só a comissão de checkout por lojista (`comissoes_por_lojista.csv`, `rastro.csv`, `pendencias.csv`, `controle.json`). As regras estão em `src/premissas.json`, cada uma com a resposta que a sustenta.
+
+### Perguntas do roteiro mínimo e onde já foram respondidas
+
+| # | Pergunta | Resposta do financeiro | Como o código aplica |
+|---|---|---|---|
+| Q01 | Base da comissão: `valor_taxa` da Orbe ou bruto × taxa contratada? | **R1** (bruto × contratada) + **R8** (arredondamento comum por linha) | `base_comissao = bruto_x_taxa_contratada`, `ROUND_HALF_UP` por linha |
+| Q03 | Estornos de vendas de agosto entram em setembro? | **R2**: entram no mês do estorno, pela taxa da data da venda original | `estorno_taxa_da_venda_original = true`; 9 estornos marcados `estorno_de_venda_de_2026-08` no rastro |
+| Q04 | Antecipação e reversão entram na comissão? | **R4**: antecipação entra; a reversão anula a antecipação que ela reverte | `incluir_antecipacao = true`; reversão = −comissão da antecipação do `id_referencia` |
+| Q09 | CNPJ de Kiwi, Horizonte Intercâmbio, Horizonte Viagens e Atlas | **R3**: os três primeiros têm EC ligado pela Helena às linhas da planilha; Atlas não fatura até o Comercial confirmar | `de_para_ec` com fonte R3; Atlas → `PEND-EC-1076801732`, `quem_decide = Comercial` |
+
+### Premissas próprias da solução mínima
+
+| # | Premissa | Por quê |
+|---|---|---|
+| M1 | Lojista com duas linhas de vigência (Bridge) sai uma vez só, com o nome da **primeira** linha da planilha ("Escola Bridge de Idiomas Ltda") | O CNPJ é o mesmo; a segunda linha é só a renegociação do crédito à vista |
+| M2 | Linha que não dá para calcular (taxa ausente, modalidade sem coluna, reversão sem antecipação no arquivo, id duplicado, líquido inconsistente) vira pendência `PEND-TX-<id>` com o valor cobrado pela Orbe, e **não** fatura | CLAUDE.md: exceção é pendência para uma pessoa. Em setembro nenhuma linha caiu aqui |
+| M3 | O `valor_brl` de pendência de EC sem CNPJ é o que a **Orbe cobrou** (exposição), não comissão | Sem contrato não há taxa contratada para calcular (P10) |
+| M4 | O cabeçalho da planilha é localizado pela célula "Lojista", e os arquivos por padrão de nome (`01_orbe_relatorio_comissoes_*.csv`, `02_tabela_taxas_contratadas*.xlsx`) | Para rodar em outubro sem mudar código |
+
+### Fatos conferidos no perfil dos dados (16/10, noite)
+
+- Orbe: 1.943 linhas, ids únicos, `valor_liquido = bruto − taxa` em todas. Σ `valor_taxa` = 231.880,36 (VENDA 214.558,33; ESTORNO −7.108,69; ANTECIPACAO 30.491,41; REVERSAO −6.060,69). Estorno e reversão vêm com bruto e taxa negativos.
+- Os 4 ECs sem "EC Orbe" na planilha somam **290 linhas** e R$ 35.368,67 cobrados pela Orbe (Kiwi 85, Horizonte Intercâmbio 73, Horizonte Viagens 75, Atlas 57). O roteiro inicial dizia "cerca de 274": estava errado.
+- Os 9 estornos de agosto não têm a venda original no arquivo; a taxa vem da planilha pela `data_venda_original`. Estorno tem sempre a mesma modalidade/parcelas da venda referenciada (conferido nas 50 que estão no arquivo).
+- As 6 reversões apontam para antecipações do próprio arquivo, mesmo EC e mesmo valor.
+
+### Resultado de setembro
+
+21 lojistas com comissão, Σ R$ 207.039,73 pela taxa contratada (a Orbe cobrou R$ 224.004,31 nessas linhas; a diferença de R$ 16.964,58 é Casa do Estudante isenta, Rota Global +0,5 p.p., Bridge 15–18/09 e truncamento da Orbe). Uma pendência: Atlas, R$ 7.876,05, Comercial. As 21 comissões batem centavo a centavo com a v1 da `main` (implementação independente, 14/14 casos de referência).
