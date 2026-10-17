@@ -75,7 +75,7 @@ Todos os arquivos usam separador `;`, decimal `.`, datas `AAAA-MM-DD` e CNPJ com
 - **Nada inventado:** lojista sem contrato não fatura, e taxa ausente vira pendência. Lojista é identificado por EC ou CNPJ, nunca por nome.
 - **Dados originais intactos:** os arquivos de `data/raw/` nunca são editados. Um teste confere o checksum de cada um.
 
-Validação em setembro: 186 testes automatizados, 14 de 14 casos de uma referência montada à mão e uma implementação independente do checkout (branch `solucao_minimo`) chegando aos mesmos valores por lojista.
+Validação em setembro: 210 testes automatizados, 14 de 14 casos de uma referência montada à mão e uma implementação independente do checkout (branch `solucao_minimo`) chegando aos mesmos valores por lojista.
 
 ## Como funciona
 
