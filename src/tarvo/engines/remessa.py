@@ -6,6 +6,7 @@ Fontes: `ponte` + `taxas` (coluna `spread_remessa`). Regras: R4/R5/R7/R8, premis
 from __future__ import annotations
 
 import datetime as dt
+import re
 from decimal import Decimal
 
 import pandas as pd
@@ -16,6 +17,8 @@ from tarvo.money import ZERO, brl, pct, pct_br, q, q_mul, sum_q
 
 ARQUIVO_PONTE = "ponte"
 ARQUIVO_TAXAS = "taxas"
+# R27/P21: linha nova da Ponte com o ajuste de uma contestação aceita, apontando a operação original.
+AJUSTE_REF = re.compile(r"AJUSTE\s+REF\s+(PC-[\w-]+)", re.IGNORECASE)
 
 # Por que uma linha do relatório da Ponte não entra na nota (rastro da RM-CONTEST, P27).
 FORA_DA_NOTA = {
@@ -59,6 +62,7 @@ def _nome_lojista(nomes: list[str]) -> str:
 def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResult:
     result = EngineResult()
     contratos = _spread_contratado(taxas)
+    cnpjs_na_planilha = set(taxas["cnpj"].dropna())
 
     # 1) Deduplicação (R5, P14): PC-0926-0162 aparece 2× com mesmos dados financeiros.
     #    Operações com mesmo n_operacao e dados financeiros divergentes abrem pendência técnica.
@@ -101,13 +105,13 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                     "linha_negocio": "REMESSA",
                 })
 
-    # 2) 4 negativos de setembro: excluir (P12) com pendência de contestação.
+    # 2) Spread negativo: fora da comissão e da nota, com pendência de contestação (P12).
     divergencias_rows: list[dict] = []
     rastro_rows: list[dict] = []
 
     por_lojista: dict[str, Decimal] = {}
     nomes_por_cnpj: dict[str, list[str]] = {}
-    rastros_por_lojista: dict[str, list[tuple[str, Decimal]]] = {}
+    rastros_por_lojista: dict[str, list[tuple[str, Decimal, str]]] = {}  # (operação, valor, metadata extra)
     nota_contribuicoes: list[dict] = []
 
     for op in deduped:
@@ -173,6 +177,20 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
         # R5: spread negativo não é aceito, em qualquer mês. Fica fora da comissão e da nota
         # e vira pendência de contestação com o valor cheio da operação (R12). Quem decide
         # é a Helena; a Ponte é a destinatária da contestação (R11, R12).
+        # R27/P21/P31: ajuste de contestação aceita entra na comissão e na nota do mês em que aparece,
+        # pelos mesmos 50% de qualquer linha do relatório (spread cheio, R10). Não é spread negativo a
+        # contestar nem divergência. O rastro aponta a linha do ajuste (existe neste arquivo) e cita a
+        # operação original na metadata.
+        if ajuste := AJUSTE_REF.search(str(op.get("observacao") or "")):
+            participacao = q_mul(spread_brl, Decimal("0.5"))
+            extra = f",ajuste_ref={ajuste.group(1).upper()}"
+            por_lojista[cnpj] = por_lojista.get(cnpj, ZERO) + participacao
+            nomes_por_cnpj.setdefault(cnpj, []).append(cliente)
+            rastros_por_lojista.setdefault(cnpj, []).append((n_op, participacao, extra))
+            nota_contribuicoes.append({"n_operacao": n_op, "cnpj": cnpj, "participacao": participacao,
+                                       "extra": extra})
+            continue
+
         if spread_brl < 0:
             fora_da_nota.append((op, "negativo"))
             obs = op.get("observacao") or ""
@@ -199,11 +217,31 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
         por_lojista.setdefault(cnpj, ZERO)
         por_lojista[cnpj] += participacao
         nomes_por_cnpj.setdefault(cnpj, []).append(cliente)
-        rastros_por_lojista.setdefault(cnpj, []).append((n_op, participacao))
-        nota_contribuicoes.append({"n_operacao": n_op, "cnpj": cnpj, "participacao": participacao})
+        rastros_por_lojista.setdefault(cnpj, []).append((n_op, participacao, ""))
+        nota_contribuicoes.append({"n_operacao": n_op, "cnpj": cnpj, "participacao": participacao,
+                                   "extra": ""})
 
         # Divergência de spread (R5/R7 + P5/P7).
         contratado = contratos.get(cnpj)
+        if contratado is None and cnpj not in cnpjs_na_planilha:
+            # P16 (R17): a Ponte paga a nossa metade e a nota tem que bater com o repasse, então a
+            # participação já entrou acima. Falta o cadastro, que é do Comercial (R24.1).
+            pendencias.append({
+                "id": f"RM-SEMCAD-{n_op}",
+                "tipo": "LOJISTA_REMESSA_SEM_CADASTRO",
+                "ref_origem": n_op,
+                "arquivo_origem": ARQUIVO_PONTE,
+                "valor_brl": participacao,
+                "motivo": (
+                    f"Operação {n_op} de {cliente} (CNPJ {cnpj}) não tem lojista na planilha de taxas. "
+                    f"A participação de {brl(participacao)} entrou na comissão e na nota, porque a Ponte "
+                    "paga pelo realizado. Sem spread contratado, não dá para checar divergência (P16, R17)."
+                ),
+                "quem_decide": "Comercial",
+                "cnpj": cnpj,
+                "linha_negocio": "REMESSA",
+            })
+            continue
         if contratado is None:
             pendencias.append({
                 "id": f"RM-SEMSPR-{n_op}",
@@ -291,18 +329,42 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             "linha_negocio": "REMESSA",
             "comissao_brl": total,
         })
-        for n_op, valor in rastros_por_lojista[cnpj]:
+        for n_op, valor, extra in rastros_por_lojista[cnpj]:
             rastro_rows.append({
                 "id_saida": id_saida,
                 "arquivo_origem": ARQUIVO_PONTE,
                 "ref_origem": n_op,
                 "valor": valor,
-                "metadata": "participacao_remessa",
+                "metadata": f"participacao_remessa{extra}",
             })
 
     # 4) Nota única (R4 + P14): tomador = Ponte Câmbio.
-    total_nota = sum_q([r["valor"] for r in rastro_rows if r.get("metadata") == "participacao_remessa"])
+    total_nota = sum_q(c["participacao"] for c in nota_contribuicoes)
     notas_rows: list[dict] = []
+    if nota_contribuicoes and total_nota <= ZERO:
+        # R27: mês zerado ou negativo (ex.: ajuste maior que as participações) não emite nota e vira
+        # pendência para a Helena, com o rastro nas operações que formam o saldo.
+        pend_nota = f"RM-NTNEG-{competencia}-PONTE"
+        pendencias.append({
+            "id": pend_nota,
+            "tipo": "NOTA_NEGATIVA" if total_nota < ZERO else "NOTA_ZERO_INESPERADA",
+            "ref_origem": rules.PONTE_CNPJ,
+            "arquivo_origem": ARQUIVO_PONTE,
+            "valor_brl": total_nota,
+            "motivo": (
+                f"Participação da Tarvo no spread da Ponte em {_competencia_fmt(competencia)} fechou em "
+                f"{brl(total_nota)}, somando {len(nota_contribuicoes)} operações"
+                f"{_resumo_ajustes(nota_contribuicoes)}. Zerado ou negativo não emite nota (R4, R27)."
+            ),
+            "quem_decide": "Financeiro",
+            "cnpj": rules.PONTE_CNPJ,
+            "linha_negocio": "REMESSA",
+            "rastro_proprio": True,
+        })
+        for contrib in nota_contribuicoes:
+            rastro_rows.append({"id_saida": pend_nota, "arquivo_origem": ARQUIVO_PONTE,
+                                "ref_origem": contrib["n_operacao"], "valor": contrib["participacao"],
+                                "metadata": f"pendencia_NOTA_PONTE{contrib['extra']}"})
     if total_nota > ZERO:
         nota_id = f"RM-NT-{competencia}-PONTE"
         notas_rows.append({
@@ -319,7 +381,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "arquivo_origem": ARQUIVO_PONTE,
                 "ref_origem": contrib["n_operacao"],
                 "valor": contrib["participacao"],
-                "metadata": "nota_remessa",
+                "metadata": f"nota_remessa{contrib['extra']}",
             })
 
     # 5) Nota × 50% do declarado pela Ponte (P14, P27). A diferença vem das linhas do relatório
@@ -393,6 +455,14 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     result.rastro = pd.DataFrame(rastro_rows)
     result.diagnosticos = [{"codigo": "DUPLICATA_RESOLVIDA", **d} for d in duplicados_resolvidos]
     return result
+
+
+def _resumo_ajustes(contribuicoes: list[dict]) -> str:
+    ajustes = [c for c in contribuicoes if c["extra"]]
+    if not ajustes:
+        return ""
+    return (f", entre elas {len(ajustes)} de ajuste de contestação (R27) que somam "
+            f"{brl(sum_q(c['participacao'] for c in ajustes))}")
 
 
 def _ate_o_contrato(spread_pct, contratado, ptax, valor_me) -> str:

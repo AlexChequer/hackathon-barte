@@ -31,6 +31,7 @@ export const TIPO_PENDENCIA: Record<string, string> = {
   SPREAD_NEGATIVO_CONTESTAR: "Spread negativo: contestar com a Ponte",
   CONTESTACAO_PONTE: "Contestar com a Ponte",
   DUPLICATA_RELATORIO_PONTE: "Duplicata no relatório da Ponte",
+  LOJISTA_REMESSA_SEM_CADASTRO: "Lojista da Ponte sem cadastro",
   DIFERENCA_RELATORIO_PONTE: "Conferir o repasse da Ponte",
   PIX_NAO_IDENTIFICADO: "PIX sem identificação",
   DEVOLUCAO_LOJISTA_SEM_MOTIVO: "Devolução sem motivo",

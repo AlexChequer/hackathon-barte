@@ -35,7 +35,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 7 | ✅ Duplicata `PC-0926-0162` como pendência (Ponte corrigir o relatório) | R12 | **Helio** | Não |
 | 8 | ✅ `quem_decide` = Financeiro em todas as pendências da remessa (`RM-CONTEST`, duplicata conflitante, status desconhecido, spread ausente) | R11, R12 | **Helio** (feito pelo Alex) | Não |
 | 9 | ✅ Negativo com dois valores: spread do relatório + diferença até o contrato | R28.3, P23 | **Helio** | Não |
-| 10 | Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece (teste sintético) | R27, P21 | **Helio** | Não Teste pronto e marcado como falha esperada em `tests/test_outubro_sintetico.py`: quando implementar, o teste passa e o `xfail(strict=True)` avisa para tirar a marca. |
+| 10 | ✅ Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece: 50% do spread cheio na comissão e na nota (P31, aguardando a Helena), rastro na linha do ajuste com a original na metadata. Teste do outubro sintético sem `xfail`. Junto: nota da Ponte ≤ 0 vira pendência (R27) e lojista da Ponte fora da planilha vira cadastro para o Comercial (P16, P32) | R27, P21, P31, P32 | **André** (combinado com o Helio) | Não |
 | 11 | ✅ Pendência de contestação **Orbe × Rota** (R$ 1.546,28) e **Orbe × Bridge** (R$ 29,95) por lojista, `CONTESTACAO_ORBE`, valor líquido | R1, R16.3, R24.1, R28.1 | **Alex** | Não |
 | 12 | ✅ Alerta de antecipação para lojista sem histórico, pelo pico (Atlas: 15/09, R$ 179.592,82 × R$ 55.357,50) | R16.6, R28.2, R32, P22 | **Alex** | Não |
 | 13 | ✅ Atlas: 1 pendência `SEM_CONTRATO` por lojista (57 transações no rastro) com CNPJ 39566044000119 (só identidade) | R24.1, R30 | **Alex** | Não |
@@ -44,6 +44,8 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 16 | ✅ Painel (`python -m tarvo.web`): pendências por quem decide, rastro clicável de todo valor, divergências por natureza, lançamentos, **formulário de condição comercial** e decisão de sinal (grava em `config/condicoes_comerciais.json` e refaz o fechamento), upload dos arquivos do mês | P19, P20, O1 | **Alex** | Não |
 | 17 | ✅ **Layout:** cada loader confere as colunas de que precisa; arquivo com layout diferente não é usado, a frente fica bloqueada e a pendência/faixa do painel dizem o arquivo, a coluna que falta e as que vieram (`tarvo.loaders.layout`) | R34 | **Alex** | — |
 | 18 | ✅ **Arquivo ausente:** fecha as frentes que não dependem dele e gera `FRENTE_BLOQUEADA` (P25). Tela avisa em amarelo o que não vai sair e fecha "o que der"; faixa "Fechamento parcial" no painel | R34 | **Alex** | — |
+
+**Melhoria futura (P22 com histórico):** o alerta de antecipação considera "sem histórico" quem começa a movimentar depois do dia 1 do mês. Em outubro, um lojista antigo sem venda no dia 1 que antecipa acima do vendido pode virar alarme falso. Quando houver o fechamento do mês anterior, trocar por "ausente do fechamento anterior", com o critério atual como reserva (decisão do time em 17/10: manter hoje).
 
 A partir das 17h: André confere a saída final contra a `solucao_minimo` (validação independente; essa branch **não** é mergeada).
 

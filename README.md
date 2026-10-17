@@ -120,7 +120,6 @@ O front fica em `web/` (React + TypeScript + Vite + Tailwind + motion) e já vai
 ## Limitações conhecidas
 
 - **Atlas confirmada depois (R18):** quando o comercial confirmar a taxa, outubro precisa puxar as 57 transações de setembro. Hoje isso não é automático: elas ficam na pendência, identificadas pelo CNPJ.
-- **Ajuste de contestação da Ponte no mês seguinte (R27):** a regra está escrita (P21), mas não há caso em setembro e não está implementada.
 - **Provisão de folha e impostos do próprio mês:** não é gerada; o pacote não traz os valores.
 - **Colunas extras** além das pedidas: `causa_divergencia` nas divergências, `motivo` nos lançamentos e `metadata` no rastro. As colunas obrigatórias estão todas presentes, na ordem pedida.
 - **Numeração das linhas do Aurora:** conta a partir de 1, então a primeira transação é a `L9` (P1, não confirmada com a organização).

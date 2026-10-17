@@ -69,7 +69,6 @@ def test_transferencia_sem_chegada_continua_em_transito(outubro):
     assert list(_pend(outubro, "TRANSFERENCIA_EM_TRANSITO")["ref_origem"]) == ["L92"]
 
 
-@pytest.mark.xfail(strict=True, reason="gap 10 (R27/P21): ajuste da Ponte ainda vira spread negativo")
 def test_ajuste_de_contestacao_da_ponte_abate_a_comissao_do_mes(outubro):
     """R27: linha nova com Spread R$ negativo e obs 'AJUSTE REF PC-…' entra na comissão do mês,
     dentro da nota única para a Ponte, com o rastro apontando a operação original."""
@@ -77,3 +76,9 @@ def test_ajuste_de_contestacao_da_ponte_abate_a_comissao_do_mes(outubro):
     assert "PC-1026-9001" not in set(negativos["ref_origem"])
     rastro = outubro.rastro
     assert ((rastro["ref_origem"] == "PC-1026-9001") & (rastro["metadata"].str.contains(AJUSTE_REF))).any()
+    # P31: spread do ajuste vem cheio (devolução ao lojista); sai a nossa metade, na comissão e na nota (R10).
+    do_ajuste = rastro[rastro["ref_origem"] == "PC-1026-9001"].set_index("id_saida")["valor"]
+    assert set(do_ajuste.index) == {"RM-CM-2026-10-17217888000111", "RM-NT-2026-10-PONTE"}
+    assert set(do_ajuste) == {Decimal("-14.78")}
+    assert outubro.divergencias[outubro.divergencias["ref_origem"] == "PC-1026-9001"].empty
+    assert outubro.controle["ponte"]["fecha"]

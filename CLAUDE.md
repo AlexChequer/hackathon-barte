@@ -18,7 +18,7 @@ Contexto: fechamento mensal de uma subadquirente fictícia. Leia `docs/MAPA_DADO
 source .venv/bin/activate
 python -m tarvo --dados data/raw/set2026 --saida saida
 pytest -q && ruff check .
-streamlit run src/tarvo/ui/app.py   # interface fina sobre o mesmo motor
+python -m tarvo.web --dados data/raw/set2026   # painel web fino sobre o mesmo motor
 ```
 
 ## Estrutura

@@ -43,9 +43,13 @@ PROXIMO_PASSO: dict[str, Callable[[dict], str]] = {
         "Financeiro e Comercial confirmam o contrato do lojista antes de liberar novas antecipações "
         "(R16.6, R28.2)."),
     "NOTA_NEGATIVA": lambda p: (
+        "Não emitir nota para a Ponte. Helena decide com a Ponte como tratar o saldo do mês (R27)."
+        if str(p["id_saida"]).startswith("RM-") else
         "Não emitir nota. Helena trata o saldo com o lojista. O negativo não passa sozinho para o mês "
         "seguinte (R4)."),
     "NOTA_ZERO_INESPERADA": lambda p: (
+        "Não emitir nota para a Ponte. Conferir no rastro as operações e os ajustes do mês (R27)."
+        if str(p["id_saida"]).startswith("RM-") else
         "Conferir no rastro as transações do lojista antes de decidir se há nota (R4)."),
     "EC_NAO_CADASTRADO": lambda p: (
         "Comercial cadastra o EC na planilha de taxas (CNPJ e taxas) e o fechamento roda de novo (R3)."),
@@ -79,6 +83,9 @@ PROXIMO_PASSO: dict[str, Callable[[dict], str]] = {
         "Pedir à Ponte o Spread R$ da operação. Sem ele, a operação não entra na comissão."),
     "STATUS_DESCONHECIDO": lambda p: (
         "Confirmar com a Ponte o status de compliance. Se a operação valer, fechar de novo."),
+    "LOJISTA_REMESSA_SEM_CADASTRO": lambda p: (
+        "Comercial cadastra o lojista na planilha de taxas, com o spread de remessa contratado. A "
+        "participação já está na nota, e a divergência passa a ser checada no fechamento seguinte (P16)."),
     "SPREAD_CONTRATADO_INVALIDO": lambda p: (
         "Comercial corrige o spread de remessa do lojista na planilha (vazio ou \"padrão\" vale 1,5%, R5)."),
     # extratos
