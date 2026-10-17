@@ -355,3 +355,11 @@ def test_repasse_da_ponte_de_mes_anterior_baixa_recebivel_em_qualquer_mes():
     row = pd.Series({"descricao": "TED RECEB PONTE CAMBIO SA REPASSE COMISSAO 09/2026",
                      "data": dt.date(2026, 10, 6), "valor": Decimal("39543.45")})
     assert ex._classifica_meridiano(row)["conta_codigo"] == rules.CONTA_BAIXA_PASSIVO["repasse_ponte"]
+
+
+def test_rastro_aponta_o_arquivo_de_ajustes_e_cobertura_inclui_ele(tmp_path):
+    from tarvo.orquestrador import run_closing
+    res = run_closing(DATA, tmp_path)
+    venda_tardia = res.rastro[res.rastro["ref_origem"] == "TX88447225"]
+    assert not venda_tardia.empty and set(venda_tardia["arquivo_origem"]) == {"orbe_ajustes"}
+    assert not res.problemas_integridade

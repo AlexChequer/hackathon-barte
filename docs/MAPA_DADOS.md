@@ -83,3 +83,9 @@ Varredura de todos os textos livres do data pack de setembro:
 | Linhas/colunas ocultas, outras abas | Nenhuma além da aba 2025 | — |
 
 **Conclusão:** em setembro, a Casa é o único caso de condição comercial fora da planilha. Mas o padrão ("ver c/ comercial", "condição especial", "negociado", "renegociado") é texto livre e pode voltar em outubro com outro lojista.
+
+## Arquivo 06: ajustes tardios da Orbe (chegou 17/10 13h10)
+
+`06_orbe_ajustes_tardios_set2026.csv`: mesmo formato do 01, 14 linhas de 30/09 que ficaram fora do relatório: 10 estornos de vendas de setembro, 3 reversões de antecipação (Oxford ×2, Maple) e 1 venda (Kiwi). Conferido: ids novos (nenhum repetido com o 01), todas as 13 referências existem no 01, nenhuma antecipação já revertida, ECs conhecidos (incluindo Bridge 1075624862). Nenhuma divergência de taxa nova.
+
+O loader trata `*_orbe_ajustes_*.csv` como opcional (zero ou mais arquivos), junta com o 01 e marca `arquivo_origem = orbe_ajustes` no rastro. Efeito no checkout: R$ 207.039,73 → **R$ 203.735,34** (−3.304,39; Oxford −2.232,19, Maple −845,01, Edu Abroad −212,01, Bridge −146,28, Dublin −29,71, Mundo Aberto −14,00, Kiwi +174,81).

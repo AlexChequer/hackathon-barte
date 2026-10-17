@@ -6,7 +6,7 @@ Comece aqui. Detalhes: `HIPOTESES.md` (R1–R34, P1–P24, O1), `docs/BACKLOG.md
 
 | Nível | O case pede | Situação |
 |---|---|---|
-| **Mínimo** | Comissão de checkout por lojista, com rastro | ✅ 21 lojistas, R$ 207.039,73, rastro exato; validada por implementação independente (André) e referência manual 14/14 |
+| **Mínimo** | Comissão de checkout por lojista, com rastro | ✅ 21 lojistas, **R$ 203.735,34** com os ajustes tardios da Orbe (era R$ 207.039,73 só com o 01), rastro exato; referência manual 14/14. A validação do André (`solucao_minimo`) bateu no 01 e precisa ler também o 06 |
 | **Alvo** | + comissão de remessa | ✅ 14 lojistas, R$ 39.543,45 (50% por operação, sem duplicata e sem negativos) |
 | | + divergências de taxa, transação por transação | ✅ 233 linhas: `CK-DIV` (Orbe errou, R$ 1.576,23), `CK-COND` (Casa, concessão fora do contrato), `RM-DIV` (Mundo Aberto, R$ 1.418,85) |
 | | + notas a emitir | ✅ 20 checkout + 1 Ponte; ≤ 0 sem nota e com pendência |
@@ -28,7 +28,7 @@ Um comando (`python -m tarvo --dados <pasta do mês> --saida saida`) lê os 6 ar
 
 | Saída | Linhas | Destaques |
 |---|---|---|
-| `comissoes_por_lojista` | 35 | Checkout R$ 207.039,73 (21 lojistas) · Remessa R$ 39.543,45 (14) |
+| `comissoes_por_lojista` | 35 | Checkout R$ 203.735,34 (21 lojistas, com o arquivo 06) · Remessa R$ 39.543,45 (14) |
 | `divergencias_taxa` | 233 | `CK-DIV` 92 (Rota, Bridge: cobrar da Orbe R$ 1.576,23) · `CK-COND` 118 (Casa: devolver, fora da cobrança) · `RM-DIV` 23 (Mundo Aberto R$ 1.418,85) |
 | `notas_a_emitir` | 21 | 20 checkout + 1 Ponte Câmbio (R$ 39.543,45) |
 | `lancamentos_classificados` | 184 | 184/184 por regra, só contas analíticas |
