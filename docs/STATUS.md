@@ -59,7 +59,7 @@ Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R27 ajuste de contestação da Ponte no mês seguinte (P21) | ❌ sem caso em setembro |
 | R28.3 negativo com os dois valores (P23) | ❌ |
 | O1 um comando, nada fixo para setembro, README com chave | ✅ código · ❌ README · ❌ `saida/` na raiz |
-| R34 avisar quando o layout quebra; arquivo ausente não segura o mês | ❌ gaps 17 e 18 |
+| R34 avisar quando o layout quebra; arquivo ausente não segura o mês | ✅ arquivo ausente fecha em parte (gap 18); arquivo com nome trocado é reconhecido pelo conteúdo · ❌ coluna renomeada dentro do arquivo (gap 17) |
 | P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
 ## Hardening do pipeline (17/10 tarde, commit `facce8b`)

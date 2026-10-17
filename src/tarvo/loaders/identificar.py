@@ -8,6 +8,7 @@ import io
 import zipfile
 from fnmatch import fnmatch
 
+from tarvo import frentes
 from tarvo.loaders import ESPERADOS, IGNORADOS
 
 ORBE_CABECALHO = "id_transacao;data_movimento;cod_estabelecimento"
@@ -66,8 +67,10 @@ def _canonico(chave: str, indice: int, original: str) -> str:
 
 
 def classificar_lote(arquivos: list[tuple[str, bytes]]) -> dict:
-    """Classifica um lote de upload: cada arquivo com a chave e o nome com que será gravado,
-    e a lista de problemas (obrigatório faltando ou repetido, arquivo que não é do fechamento)."""
+    """Classifica um lote de upload: cada arquivo com a chave e o nome com que será gravado.
+
+    `problemas` impedem o envio (arquivo repetido ou desconhecido, ou nada pode rodar).
+    `faltando` e `bloqueios` só avisam: o fechamento roda o que der (R34)."""
     itens, problemas, contagem = [], [], {}
     for nome, conteudo in arquivos:
         if any(fnmatch(nome, p) for p in IGNORADOS):
@@ -82,10 +85,15 @@ def classificar_lote(arquivos: list[tuple[str, bytes]]) -> dict:
         contagem[chave] = indice + 1
         canonico = nome if por == "nome" else _canonico(chave, indice, nome)
         itens.append({"nome": nome, "chave": chave, "por": por, "nome_canonico": canonico})
+    faltando = []
     for e in (e for e in ESPERADOS if e["obrigatorio"]):
         achados = [i["nome"] for i in itens if i["chave"] == e["chave"]]
         if not achados:
-            problemas.append(f"faltando: {e['nome']} ({e['padrao']})")
+            faltando.append(e["chave"])
         elif len(achados) > 1:
             problemas.append(f"mais de um {e['nome']}: {', '.join(achados)}")
-    return {"arquivos": itens, "problemas": problemas}
+    presentes = {e["chave"] for e in ESPERADOS if e["obrigatorio"]} - set(faltando)
+    if not any(frentes.roda(f, presentes) for f in frentes.FRENTES):
+        problemas.append("com esses arquivos nenhuma parte do fechamento pode rodar")
+    return {"arquivos": itens, "problemas": problemas, "faltando": faltando,
+            "bloqueios": frentes.bloqueios(presentes)}

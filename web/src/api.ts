@@ -7,6 +7,7 @@ export interface Fechamento {
   regras_versao: string;
   duracao_s: number;
   arquivos: { nome: string; bytes: number; opcional: boolean }[];
+  bloqueios: Bloqueio[];
   validacoes: {
     rastro_ok: boolean;
     integridade_ok: boolean;
@@ -18,6 +19,13 @@ export interface Fechamento {
     string
   >;
   tabelas: Record<"comissoes" | "divergencias" | "notas" | "lancamentos" | "pendencias", Linha[]>;
+}
+
+export interface Bloqueio {
+  frente: string;
+  faltando: string[];
+  parcial: boolean;
+  nao_sai: string;
 }
 
 export interface Condicao {

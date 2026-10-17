@@ -72,6 +72,27 @@ def _load_orbe_completa(data_dir: Path) -> pd.DataFrame:
     return pd.concat(partes, ignore_index=True)
 
 
+LEITORES = {
+    "taxas": load_taxas, "ponte": load_ponte, "plano": load_plano,
+    "aurora": load_aurora, "meridiano": load_meridiano,
+}
+
+
+def load_disponiveis(data_dir: Path) -> tuple[dict, list[str]]:
+    """Carrega o que estiver na pasta. Arquivo obrigatório ausente vira None e entra na lista de
+    ausentes (R34: o fechamento roda o que der). Arquivo repetido continua sendo erro."""
+    sources: dict = {}
+    ausentes: list[str] = []
+    for chave in FILES:
+        if not sorted(data_dir.glob(FILES[chave])):
+            sources[chave] = None
+            ausentes.append(chave)
+            continue
+        sources[chave] = (_load_orbe_completa(data_dir) if chave == "orbe"
+                          else LEITORES[chave](find_file(data_dir, chave)))
+    return sources, ausentes
+
+
 def load_all(data_dir: Path) -> dict:
     return {
         "orbe": _load_orbe_completa(data_dir),

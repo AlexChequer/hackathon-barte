@@ -40,8 +40,9 @@ def test_lote_renomeado_completo_vira_nomes_canonicos():
 def test_lote_com_arquivo_estranho_e_faltando_aponta_os_dois():
     lote = [(r, (DATA / o).read_bytes()) for o, (r, _) in RENOMEADOS.items() if not o.startswith("03_")]
     lote.append(("foto.png", b"\x89PNG..."))
-    problemas = " ".join(classificar_lote(lote)["problemas"])
-    assert "foto.png" in problemas and "Ponte" in problemas
+    c = classificar_lote(lote)
+    assert any("foto.png" in p for p in c["problemas"])
+    assert c["faltando"] == ["ponte"] and [b["frente"] for b in c["bloqueios"]] == ["remessa"]
 
 
 def test_dois_relatorios_da_orbe_sem_nome_padrao_e_ambiguo():

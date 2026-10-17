@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from tarvo import condicoes as cond_mod
 from tarvo import rules, sinais
 from tarvo.avaliacao import avaliar_e_persistir
-from tarvo.loaders import ESPERADOS, FILES, OPCIONAIS, load_all
+from tarvo.loaders import ESPERADOS, FILES, OPCIONAIS, load_disponiveis
 from tarvo.loaders.identificar import classificar_lote
 from tarvo.orquestrador import ClosingResult, run_closing
 
@@ -119,6 +119,7 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
                 "problemas": [str(p) for p in r.problemas_integridade][:20],
                 "referencia": aval,
             },
+            "bloqueios": r.bloqueios,
             "totais": _totais(r),
             "tabelas": {nome: _registros(getattr(r, nome)) for nome in
                         ("comissoes", "divergencias", "notas", "lancamentos", "pendencias")},
@@ -142,7 +143,9 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
 
     @app.get("/api/lojistas")
     def get_lojistas() -> list[dict]:
-        taxas = load_all(app.state.dados)["taxas"]
+        taxas = load_disponiveis(app.state.dados)[0]["taxas"]
+        if taxas is None:
+            return []
         unicos = taxas.drop_duplicates("cnpj")[["cnpj", "lojista"]]
         return [{"cnpj": c, "lojista": str(n).strip()} for c, n in unicos.itertuples(index=False)]
 
@@ -171,7 +174,9 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
     @app.get("/api/sinais")
     def get_sinais() -> list[dict]:
         r = resultado()
-        taxas = load_all(app.state.dados)["taxas"]
+        taxas = load_disponiveis(app.state.dados)[0]["taxas"]
+        if taxas is None:
+            return []
         conds = cond_mod.carregar(app.state.condicoes)
         resolvidos = cond_mod.carregar_sinais_resolvidos(app.state.condicoes)
         return [{"id_saida": pid, "cnpj": m.sinal.cnpj, "lojista": m.sinal.lojista, "linha": m.sinal.linha,
@@ -202,7 +207,7 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
         lidos = await _ler(arquivos)
         lote = classificar_lote(lidos)
         if lote["problemas"]:
-            raise HTTPException(422, "Envie exatamente os 6 arquivos do mês. " + "; ".join(lote["problemas"]))
+            raise HTTPException(422, "Arquivos com problema: " + "; ".join(lote["problemas"]))
         destino = app.state.saida / "entradas" / dt.datetime.now().strftime("%Y%m%d_%H%M%S")
         destino.mkdir(parents=True, exist_ok=True)
         canonicos = {i["nome"]: i["nome_canonico"] for i in lote["arquivos"]}

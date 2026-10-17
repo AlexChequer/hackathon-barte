@@ -8,7 +8,7 @@ import { Rastro, type AlvoRastro } from "./components/Rastro";
 import { Upload } from "./components/Upload";
 import { Divergencias, Lancamentos, Numeros } from "./components/Tabelas";
 import { RastroContext } from "./components/Valor";
-import { competencia as nomeCompetencia } from "./format";
+import { ARQUIVO, FRENTE, competencia as nomeCompetencia } from "./format";
 
 type Tela = "pendencias" | "numeros" | "divergencias" | "lancamentos" | "condicoes";
 
@@ -128,6 +128,21 @@ export default function App() {
               {erro && (
                 <div role="alert" className="mb-6 flex gap-2 rounded-lg border border-erro/30 bg-folha px-4 py-3 text-sm text-erro">
                   <TriangleAlert size={16} className="mt-0.5 shrink-0" /> <span>{erro}</span>
+                </div>
+              )}
+              {f && f.bloqueios.length > 0 && (
+                <div role="status" className="mb-6 rounded-lg border border-decisao/50 bg-decisao-fundo px-4 py-3 text-sm text-decisao-tinta">
+                  <p className="flex items-center gap-1.5 font-semibold">
+                    <TriangleAlert size={15} /> Fechamento parcial: faltaram arquivos
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {f.bloqueios.map((b) => (
+                      <li key={b.frente}>
+                        <strong className="font-medium">{FRENTE[b.frente]}</strong> {b.parcial ? "fechou em parte" : "não fechou"}: falta{" "}
+                        {b.faltando.map((a) => ARQUIVO[a]).join(", ")}. Envie e feche de novo.
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
               {!f ? (

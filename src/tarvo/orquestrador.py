@@ -14,15 +14,15 @@ import hashlib
 import logging
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pandas as pd
 
 from tarvo import condicoes as cond_mod
-from tarvo import output, persistencia, rules, sinais
-from tarvo.engines import checkout, extratos, remessa
-from tarvo.loaders import FILES, OPCIONAIS, load_all
+from tarvo import frentes, output, persistencia, rules, sinais
+from tarvo.engines import EngineResult, checkout, extratos, remessa
+from tarvo.loaders import FILES, OPCIONAIS, load_disponiveis
 
 log = logging.getLogger("tarvo.orq")
 
@@ -43,6 +43,7 @@ class ClosingResult:
     duracoes_s: dict[str, float]
     hashes: dict[str, str]
     commit: str | None
+    bloqueios: list[dict] = field(default_factory=list)
 
 
 def _hash(path: Path) -> str:
@@ -69,13 +70,19 @@ def _mesclar(dfs: list[pd.DataFrame]) -> pd.DataFrame:
 # Fonte e coluna de data que definem a competência de cada arquivo (R2: data do movimento;
 # R5: data de contratação).
 DATAS_COMPETENCIA = {"orbe": "data_movimento", "ponte": "data_contratacao"}
+# Sem Orbe e sem Ponte (R34: fecha o que der), a competência vem das datas dos extratos.
+DATAS_RESERVA = {"aurora": "data", "meridiano": "data"}
 
 
 def inferir_competencia(sources: dict[str, pd.DataFrame]) -> str:
     """AAAA-MM mais frequente nas datas da Orbe e da Ponte. Sem datas → ValueError."""
+    colunas = {k: c for k, c in DATAS_COMPETENCIA.items() if sources.get(k) is not None}
+    if not colunas:
+        colunas = {k: c for k, c in DATAS_RESERVA.items() if sources.get(k) is not None}
+    if not colunas:
+        raise ValueError("não foi possível inferir a competência: arquivos sem datas")
     meses = pd.concat([
-        sources[k][col].dropna().map(lambda d: f"{d.year:04d}-{d.month:02d}")
-        for k, col in DATAS_COMPETENCIA.items() if k in sources
+        sources[k][col].dropna().map(lambda d: f"{d.year:04d}-{d.month:02d}") for k, col in colunas.items()
     ])
     if meses.empty:
         raise ValueError("não foi possível inferir a competência: arquivos sem datas")
@@ -85,9 +92,14 @@ def inferir_competencia(sources: dict[str, pd.DataFrame]) -> str:
     return str(contagem.index[0])
 
 
-def _rastro_com_arquivo_da_orbe(rastro: pd.DataFrame, orbe: pd.DataFrame) -> pd.DataFrame:
+def _ou_vazio(df: pd.DataFrame | None) -> pd.DataFrame:
+    """Banco ausente entra como extrato sem linhas (R34: classifica o banco que veio)."""
+    return df if df is not None else pd.DataFrame(columns=["ref_origem", "data", "descricao", "valor"])
+
+
+def _rastro_com_arquivo_da_orbe(rastro: pd.DataFrame, orbe: pd.DataFrame | None) -> pd.DataFrame:
     """Os motores marcam toda linha da Orbe como "orbe"; aqui cada ref aponta o arquivo real."""
-    if rastro.empty or "arquivo_origem" not in orbe:
+    if rastro.empty or orbe is None or "arquivo_origem" not in orbe:
         return rastro
     arquivo_por_id = dict(zip(orbe["id_transacao"].astype(str), orbe["arquivo_origem"], strict=True))
     da_orbe = rastro["arquivo_origem"] == "orbe"
@@ -99,7 +111,15 @@ def run_closing(
     dados: Path, saida: Path, competencia: str | None = None, condicoes_path: Path | None = None
 ) -> ClosingResult:
     t0 = time.perf_counter()
-    sources = load_all(dados)
+    sources, ausentes = load_disponiveis(dados)
+    presentes = set(FILES) - set(ausentes)
+    bloqueios = frentes.bloqueios(presentes)
+    if not any(frentes.roda(f, presentes) for f in frentes.FRENTES):
+        faltam = ", ".join(frentes.NOME_ARQUIVO[a] for a in ausentes)
+        raise FileNotFoundError(f"nenhuma parte do fechamento pode rodar; faltam: {faltam}")
+    for b in bloqueios:
+        log.warning("frente %s %s: falta %s", b["frente"], "parcial" if b["parcial"] else "bloqueada",
+                    ", ".join(b["faltando"]))
     t_load = time.perf_counter() - t0
     if competencia is None:
         competencia = inferir_competencia(sources)
@@ -115,29 +135,37 @@ def run_closing(
     t = time.perf_counter()
     caminho_condicoes = condicoes_path or cond_mod.CAMINHO_PADRAO
     condicoes = cond_mod.carregar(caminho_condicoes)
-    r_ck = checkout.run(sources["orbe"], sources["taxas"], competencia, condicoes)
+    r_ck = (checkout.run(sources["orbe"], sources["taxas"], competencia, condicoes)
+            if frentes.roda("checkout", presentes) else EngineResult())
     t_ck = time.perf_counter() - t
 
     t = time.perf_counter()
-    r_rm = remessa.run(sources["ponte"], sources["taxas"], competencia)
+    r_rm = (remessa.run(sources["ponte"], sources["taxas"], competencia)
+            if frentes.roda("remessa", presentes) else EngineResult())
     t_rm = time.perf_counter() - t
 
     t = time.perf_counter()
-    r_ex = extratos.run(sources["aurora"], sources["meridiano"], sources["plano"], competencia)
+    r_ex = (extratos.run(_ou_vazio(sources["aurora"]), _ou_vazio(sources["meridiano"]), sources["plano"],
+                         competencia, conferir_transito={"aurora", "meridiano"} <= presentes)
+            if frentes.roda("extratos", presentes) else EngineResult())
     t_ex = time.perf_counter() - t
 
     t = time.perf_counter()
-    r_sn = sinais.run(sources["taxas"], competencia, sinais.classificador_padrao(), condicoes,
-                      cond_mod.carregar_sinais_resolvidos(caminho_condicoes))
+    r_sn = (sinais.run(sources["taxas"], competencia, sinais.classificador_padrao(), condicoes,
+                       cond_mod.carregar_sinais_resolvidos(caminho_condicoes))
+            if "taxas" in presentes else EngineResult())
+    r_bl = frentes.pendencias_bloqueio(bloqueios, competencia)
     t_sn = time.perf_counter() - t
 
     comissoes = _mesclar([r_ck.comissoes, r_rm.comissoes])
     divergencias = _mesclar([r_ck.divergencias, r_rm.divergencias])
     notas = _mesclar([r_ck.notas, r_rm.notas])
     lancamentos = r_ex.lancamentos
-    pendencias = _mesclar([r_ck.pendencias, r_rm.pendencias, r_ex.pendencias, r_sn.pendencias])
+    pendencias = _mesclar(
+        [r_ck.pendencias, r_rm.pendencias, r_ex.pendencias, r_sn.pendencias, r_bl.pendencias]
+    )
     rastro = _rastro_com_arquivo_da_orbe(
-        _mesclar([r_ck.rastro, r_rm.rastro, r_ex.rastro, r_sn.rastro]), sources["orbe"]
+        _mesclar([r_ck.rastro, r_rm.rastro, r_ex.rastro, r_sn.rastro, r_bl.rastro]), sources["orbe"]
     )
 
     # Validação de rastro por saída monetária (igualdade exata em centavos).
@@ -178,15 +206,16 @@ def run_closing(
         integridade.append({"codigo": "ID_SAIDA_DUPLICADO", "ids": duplicados.index.tolist()})
 
     # Cobertura: toda entrada relevante tem que ter saída (comissão, divergência, pendência ou lançamento).
-    entradas_esperadas = {
-        **{
-            arquivo: set(grupo["id_transacao"].astype(str))
-            for arquivo, grupo in sources["orbe"].groupby("arquivo_origem")
-        },
-        "ponte": set(sources["ponte"]["n_operacao"].astype(str).unique()),
-        "aurora": set(sources["aurora"]["ref_origem"].astype(str).unique()),
-        "meridiano": set(sources["meridiano"]["ref_origem"].astype(str).unique()),
-    }
+    entradas_esperadas: dict[str, set[str]] = {}
+    if frentes.roda("checkout", presentes):
+        entradas_esperadas |= {arquivo: set(grupo["id_transacao"].astype(str))
+                               for arquivo, grupo in sources["orbe"].groupby("arquivo_origem")}
+    if frentes.roda("remessa", presentes):
+        entradas_esperadas["ponte"] = set(sources["ponte"]["n_operacao"].astype(str).unique())
+    if frentes.roda("extratos", presentes):
+        for banco in ("aurora", "meridiano"):
+            if banco in presentes:
+                entradas_esperadas[banco] = set(sources[banco]["ref_origem"].astype(str).unique())
     integridade.extend(output.validate_cobertura_entradas(entradas_esperadas, rastro))
 
     # Diretório da execução (timestamp) + symlink `latest`.
@@ -241,5 +270,5 @@ def run_closing(
         comissoes=comissoes, divergencias=divergencias, notas=notas,
         lancamentos=lancamentos, pendencias=pendencias, rastro=rastro,
         problemas_rastro=problemas_df, problemas_integridade=integridade,
-        duracoes_s=duracoes, hashes=hashes, commit=commit,
+        duracoes_s=duracoes, hashes=hashes, commit=commit, bloqueios=bloqueios,
     )
