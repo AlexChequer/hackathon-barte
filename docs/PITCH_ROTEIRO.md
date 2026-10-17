@@ -44,13 +44,14 @@ Sobram 30 s de folga para a demo atrasar.
 
 ## André
 
-**9. Onde está a IA (50 s).** "A IA construiu o fechamento com a gente, mas não decide nada nele. Cada valor sai de uma regra escrita e confirmada com o financeiro. Mesma entrada, mesma saída, auditável no centavo. Testamos um classificador de IA para achar anotações como a da Casa: palavras-chave acertaram 14 de 15, com a IA 13 de 15. Então desligamos. E a IA errou na construção: ignorou os comentários da planilha e propôs uma fórmula de divergência que a Helena contrariou. Pegamos os dois porque conferimos com o dado e perguntamos antes."
+**9. Onde está a IA (55 s).** "A IA redige, mas não decide o fechamento. Cada valor sai de uma regra escrita e confirmada com o financeiro: mesma entrada, mesma saída, auditável no centavo. Onde a IA entra é no texto: no fim da tela de pendências, ela escreve uma mensagem por destinatário, a contestação para a Orbe, a duplicata para a Ponte, a devolução para cada lojista. E ela não vê nenhum dado sensível: recebe marcadores no lugar de nomes, CNPJs e valores, e o sistema preenche e confere os valores reais. Se ela escrever um número ou prometer prazo, o texto é reprovado. Também testamos IA para achar anotações como a da Casa, e ela perdeu para palavras-chave, 13 contra 14 de 15, então desligamos. E a IA errou na construção duas vezes: pegamos os dois erros conferindo com o dado e perguntando ao financeiro."
+- *Demo, se sobrar tempo:* rolar até "Rascunhos de envio a terceiros" na aba Pendências (só aparece com `OPENAI_API_KEY` no ambiente).
 
 **10. Onde falha (45 s).** "Quando não sabe, o fechamento para e avisa quem decide. Se falta um arquivo, fecha o resto. Se a Orbe muda o layout, diz qual coluna sumiu. Se o lojista não tem contrato, não fatura e guarda as transações. Se o nome não casa, vira pendência: a gente só casa por código ou CNPJ, nunca por nome parecido. O que ainda é manual: a provisão de folha e impostos, porque os valores não vêm nos arquivos."
 
-**11. Por que confiar (35 s).** "Conferimos de quatro jeitos: 14 de 14 casos de uma referência feita à mão; uma segunda implementação, feita separada, que chega no mesmo valor por lojista; o fechamento se recusa a gravar se algum número não bate com o rastro no centavo; e 186 testes automáticos."
+**11. Por que confiar (35 s).** "Conferimos de quatro jeitos: 14 de 14 casos de uma referência feita à mão; uma segunda implementação, feita separada, que chega no mesmo valor por lojista; o fechamento se recusa a gravar se algum número não bate com o rastro no centavo; e 210 testes automáticos."
 
-**12. Com mais um mês (30 s).** "Provisão de folha e impostos, contestação pronta no formato que a Orbe e a Ponte aceitam, e o principal: rodar outubro lado a lado com a Helena e medir quantos dias o fechamento passa a levar."
+**12. Com mais um mês (30 s).** "Provisão de folha e impostos, login de verdade para quem aprova, os rascunhos revisados saindo direto para a Orbe e a Ponte, e o principal: rodar outubro lado a lado com a Helena e medir quantos dias o fechamento passa a levar."
 
 **13. Fecho (10 s).** "Setembro: 21 notas, 16 pendências com dono e nenhum centavo sem origem. E nenhuma regra que só a Helena saiba. Obrigado."
 
@@ -60,6 +61,7 @@ Sobram 30 s de folga para a demo atrasar.
 
 | Pergunta | Resposta curta |
 |---|---|
+| A IA vê dados dos lojistas? | Não. Recebe marcadores ({VALOR_1}, {LOJISTA_1}); nomes, CNPJs e valores são preenchidos na máquina, e um validador reprova número escrito pelo modelo (P36) |
 | Por que não usar IA no cálculo? | O CFO precisa defender cada nota. Um número que muda entre execuções não se defende. Medimos, e a regra simples ganhou |
 | E se a Orbe mudar o layout? | O arquivo não é usado, a pendência diz qual coluna sumiu e as frentes que não dependem dele fecham |
 | Quanto tempo economiza? | Não prometemos número sem rodar um mês real com a Helena. É o primeiro item do próximo mês |
