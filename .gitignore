@@ -17,3 +17,8 @@ build/
 CLAUDE.local.md
 ~$*.xlsx
 saida/
+
+# capturas do Playwright MCP
+.playwright-mcp/
+web/node_modules/
+*.tsbuildinfo
