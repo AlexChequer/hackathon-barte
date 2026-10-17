@@ -17,6 +17,7 @@ from tarvo import condicoes as cond_mod
 from tarvo import rules
 from tarvo.engines import EngineResult
 from tarvo.engines.checkout_pendencias import (
+    alertas_antecipacao,
     divergencias_condicao,
     nome_lojista,
     pendencias_contestacao_orbe,
@@ -104,6 +105,13 @@ def build_taxas_registry(taxas: pd.DataFrame) -> dict[str, list[LojistaTaxas]]:
         for _, r in taxas[taxas["cnpj"] == cnpj].iterrows():
             registry.setdefault(ec, []).append(_row_to_entry(r))
     return registry
+
+
+def _cnpj_por_ec(registry: dict[str, list[LojistaTaxas]]) -> dict[str, str]:
+    """EC → CNPJ: planilha/de-para R3 (registry) + ECs sem contrato com CNPJ de identidade (R30)."""
+    mapa = {ec: entries[0].cnpj for ec, entries in registry.items() if entries}
+    mapa.update({ec: c["cnpj"] for ec, c in rules.EC_SEM_CONTRATO.items() if c.get("cnpj")})
+    return mapa
 
 
 def _data_vigencia(tx: pd.Series) -> dt.date | None:
@@ -374,6 +382,7 @@ def run(
                 "comissao": comissao,
                 "divergencia": ZERO,
                 "divergencia_condicao": ZERO,
+                "valor_taxa_orbe": q(tx["valor_taxa"] or ZERO),
                 "data_movimento": data_tx,
                 "tipo": tipo,
                 "taxa_contratada": contratada,
@@ -411,6 +420,7 @@ def run(
             "comissao": comissao,
             "divergencia": divergencia,
             "divergencia_condicao": divergencia_condicao,
+            "valor_taxa_orbe": q(tx["valor_taxa"] or ZERO),
             "data_movimento": data_tx,
             "tipo": tipo,
             "taxa_contratada": contratada,
@@ -558,6 +568,9 @@ def run(
     result.divergencias = pd.DataFrame(divergencias_rows)
     result.notas = pd.DataFrame(notas_rows)
     sc_rastro, sc_pend = pendencias_sem_contrato(sem_contrato_tx, competencia)
+    tx_mes = [tx for tx in deduped if _dentro_competencia(tx.get("data_movimento"), competencia)]
+    al_rastro, al_pend = alertas_antecipacao(tx_mes, _cnpj_por_ec(registry), competencia)
+    sc_rastro, sc_pend = sc_rastro + al_rastro, sc_pend + al_pend
     rastro_rows.extend(sc_rastro)
     pendencias_cond = pendencias_cond + sc_pend
     if pendencias_cond:
