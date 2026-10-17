@@ -1,4 +1,4 @@
-# Status: 17/10, ~12h
+# Status: 17/10, ~13h
 
 Comece aqui. Detalhes: `HIPOTESES.md` (R1–R31, P1–P24, O1), `docs/BACKLOG.md` (o que falta), `docs/MVP_V1.md` (arquitetura do motor).
 
@@ -8,7 +8,7 @@ Um comando (`python -m tarvo --dados <pasta do mês> --saida saida`) lê os 6 ar
 
 **Causa raiz que atacamos (R21):** o fechamento leva 8 dias porque as regras só existem na cabeça da Helena (condições do comercial, quem é quem entre nomes e CNPJs, o que se contesta) e são aplicadas à mão (3 dias de checkout, 2 de remessa, 2 de extratos). A solução torna cada regra explícita, versionada e com fonte, e o que é exceção vira pendência com dono.
 
-## Números de set/2026 (branch `feat/condicoes-comerciais`)
+## Números de set/2026 (`main` após hardening)
 
 | Saída | Linhas | Destaques |
 |---|---|---|
@@ -17,9 +17,9 @@ Um comando (`python -m tarvo --dados <pasta do mês> --saida saida`) lê os 6 ar
 | `notas_a_emitir` | 21 | 20 checkout + 1 Ponte Câmbio (R$ 39.543,45) |
 | `lancamentos_classificados` | 184 | 184/184 por regra, só contas analíticas |
 | `pendencias` | 13 | Atlas 1 (Comercial) · contestação Orbe 2 (Rota, Bridge) · Casa devolução 1 · Casa nota negativa 1 · negativos da Ponte 4 · conferir TED 1 · extratos 3 |
-| `rastro` | 4.710 | Soma exata por `id_saida` |
+| `rastro` | 4.802 | Soma exata por `id_saida` |
 
-Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementação independente do André bate centavo a centavo nas 21 comissões de checkout.
+Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementação independente do André bate centavo a centavo nas 21 comissões de checkout.
 
 ## Regras do financeiro × motor
 
@@ -45,6 +45,21 @@ Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | O1 um comando, nada fixo para setembro, README com chave | ✅ código · ❌ README |
 | P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
+## Hardening do pipeline (17/10 tarde, commit `facce8b`)
+
+Antes: o motor dependia da ordem das linhas na Orbe, aceitava transação duplicada em silêncio, não rejeitava data fora da competência, perdia operação de remessa sem spread sem registrar, e agrupava remessa pelo nome do lojista (que varia entre linhas da Ponte). São todos riscos de o faturamento sair errado sem nenhum sinal.
+
+| Mudança | Motivação | O que faz agora |
+|---|---|---|
+| **Dedup Orbe por `id_transacao`** (checkout) | Transação repetida com dados iguais dobrava a comissão; dados divergentes faziam o motor escolher sozinho | 1× quando os campos financeiros batem; pendência `DUPLICATA_CONFLITANTE` para o Financeiro quando divergem |
+| **Two-pass antecipação** (checkout) | `REVERSAO ANTECIPACAO` só funcionava se a antecipação original vinha antes na planilha; inversão abria `REVERSAO_SEM_REFERENCIA` indevida | Pré-pass popula a comissão de todas as `ANTECIPACAO` antes do loop; `REVERSAO` acha em qualquer ordem |
+| **Filtro de competência** (checkout + remessa) | Linha de outro mês entrando no fechamento polui comissão e divergência | Data fora de `AAAA-MM` vira pendência `FORA_COMPETENCIA` para o Financeiro, sem distorcer a apuração |
+| **`SPREAD_AUSENTE`** (remessa) | `spread_brl is None` sumia a operação sem registro | Pendência `SPREAD_AUSENTE` para a Ponte Câmbio em vez do `continue` silencioso |
+| **Agrupar remessa por CNPJ só** | Mesma empresa com variação de nome entre linhas gerava 2 comissões; nome não é identidade | Agrupa por CNPJ; nome representativo escolhido entre as variações |
+| **`validate_cobertura_entradas`** (output) | Nada garantia que cada transação de entrada aparecesse em alguma saída | Checagem global: ref de entrada sem rastro em saída = `INPUT_SEM_SAIDA` no relatório de integridade |
+
+Resultado em setembro: 35 comissões, 13 pendências, 184/184 classificação, rastro 4.802 (todas somas em centavos exatos). Nenhuma nova pendência disparada no data pack real (os dados estão limpos), mas as regras agora **defendem** o próximo mês. Testes: 59 → 68 (+6 cobrindo ordem invertida, duplicata, fora-de-competência, spread ausente, nome variável, cobertura).
+
 ## Branches
 
 | Branch | Dono | Estado |
@@ -57,14 +72,15 @@ Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 ## Quem fez o quê
 
 - **Alex**: repo, loaders e testes de integridade dos dados; mapa das armadilhas; perguntas ao financeiro e registro R1–R31; generalização para qualquer mês; R3 por CNPJ; condições comerciais (Casa); detector de sinais (Laya); backlog e status.
-- **Helio**: MVP v1 de ponta a ponta (3 motores, orquestrador, rastro exato, SQLite de execuções e decisões, avaliação contra referência manual, Streamlit) e `MVP_V1.md`. Perguntas R8 (arredondamento) e R9 (plano de contas).
+- **Helio**: MVP v1 de ponta a ponta (3 motores, orquestrador, rastro exato, SQLite de execuções e decisões, avaliação contra referência manual, Streamlit) e `MVP_V1.md`. Perguntas R8 (arredondamento) e R9 (plano de contas). Hardening do pipeline (dedup, two-pass antecipação, filtro de competência, `SPREAD_AUSENTE`, agrupamento por CNPJ, cobertura de entradas).
 - **André**: implementação independente do checkout (`solucao_minimo`) que confirmou os números do `main`; premissas M1–M4; pergunta R14.
 
 ## Trajetória
 
 1. **16/10 noite**: setup, leitura dos dados, primeiras armadilhas (truncamento da Orbe, duplicata, negativos, ECs sem planilha) e perguntas R1–R9. Helio entrega o MVP v1 às 22h20.
 2. **17/10 manhã**: André valida o checkout por fora. Tiramos tudo que era fixo de setembro (O1). As respostas R10–R31 mudam três coisas: a Casa é concessão fora do contrato (devolução nossa, não cobrança da Orbe), pendências passam a ser por contraparte e lojista, e `saida/` vai na raiz.
-3. **Erros da IA registrados** (`PROMPTS/MOMENTOS.md`): L10 × L9; "a Orbe usa a tabela antiga"; loader sem comentários de célula; fórmula de divergência errada. Novo candidato: a instrução longa no Laya baixou o acerto para 8/15; medimos e trocamos por um comitê de 3 instruções curtas.
+3. **17/10 tarde**: Helio empurra o hardening (seção acima). O motor passa a ser idempotente a ordem/duplicata, filtra competência, grita quando falta dado em vez de sumir com a linha, e exige que toda entrada tenha saída via rastro.
+4. **Erros da IA registrados** (`PROMPTS/MOMENTOS.md`): L10 × L9; "a Orbe usa a tabela antiga"; loader sem comentários de célula; fórmula de divergência errada. Novo candidato: a instrução longa no Laya baixou o acerto para 8/15; medimos e trocamos por um comitê de 3 instruções curtas.
 
 ## Próximos passos
 
