@@ -1,6 +1,6 @@
 # Status: 17/10, ~13h15
 
-Comece aqui. **Painel:** `python -m tarvo.web --dados data/raw/set2026`. Comparação detalhada `main` × `solucao_minimo` e dicionário das colunas: `docs/ESTUDO_MAIN_X_SOLUCAO_MINIMO.md`. Detalhes: `HIPOTESES.md` (R1–R34, P1–P24, O1), `docs/BACKLOG.md` (gaps numerados e donos), `docs/MVP_V1.md` (arquitetura do motor).
+Comece aqui. **Falta para fechar: `docs/FECHAMENTO_FINAL.md`.** **Painel:** `python -m tarvo.web --dados data/raw/set2026`. Comparação detalhada `main` × `solucao_minimo` e dicionário das colunas: `docs/ESTUDO_MAIN_X_SOLUCAO_MINIMO.md`. Detalhes: `HIPOTESES.md` (R1–R34, P1–P24, O1), `docs/BACKLOG.md` (gaps numerados e donos), `docs/MVP_V1.md` (arquitetura do motor).
 
 ## Níveis do case × o que já entregamos
 
