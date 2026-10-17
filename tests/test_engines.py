@@ -363,3 +363,14 @@ def test_rastro_aponta_o_arquivo_de_ajustes_e_cobertura_inclui_ele(tmp_path):
     venda_tardia = res.rastro[res.rastro["ref_origem"] == "TX88447225"]
     assert not venda_tardia.empty and set(venda_tardia["arquivo_origem"]) == {"orbe_ajustes"}
     assert not res.problemas_integridade
+
+
+def test_os_6_csvs_tambem_vao_para_a_raiz_de_saida(tmp_path):
+    """R26: a banca compara com os 6 arquivos na pasta saida/ da raiz."""
+    from tarvo.orquestrador import SAIDAS, run_closing
+    res = run_closing(DATA, tmp_path)
+    for nome in SAIDAS:
+        raiz, execucao = tmp_path / nome, res.out_dir / nome
+        assert raiz.exists(), nome
+        assert raiz.read_bytes() == execucao.read_bytes()
+    assert sorted(p.name for p in tmp_path.glob("*.csv")) == sorted(SAIDAS)

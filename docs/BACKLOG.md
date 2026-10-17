@@ -26,7 +26,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 
 | # | Gap | Regra | Dono | Bloqueia entrega? |
 |---|---|---|---|---|
-| 1 | Gravar os 6 CSVs de setembro **na raiz** de `saida/` e commitar (hoje vão para `saida/2026-09/exec_*`, e `saida/` está no `.gitignore`) | R26, O1 | **André** | **Sim** |
+| 1 | ✅ Os 6 CSVs do último fechamento são gravados também na raiz de `saida/` e versionados (histórico, uploads e SQLite fora do git). **Antes do último commit, rodar `python -m tarvo --dados data/raw/set2026` e commitar `saida/*.csv`** | R26, O1 | **Alex** | — |
 | 2 | README: um comando, onde pôr os arquivos, `.env`, Laya experimental | O1 | **André** | **Sim** |
 | 3 | Perguntar à organização: colunas extras (`rastro.metadata`, `lancamentos.motivo`) e L9 × L10 do Aurora | P1 | **André** | Talvez |
 | 4 | Extratos: `confianca` do PIX L50 < 1; motivo "remessa de outubro" no `MRD2026090425` | R6, R16.5 | **André** | Não |

@@ -55,10 +55,10 @@ Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R16.6/R28.2/R32 alerta de antecipação só para lojista sem histórico (P22) | ✅ Atlas, pelo pico |
 | R18 Atlas confirmada depois: outubro puxa as linhas de setembro | ❌ |
 | R24.3 venda acima de 12x → pendência | ✅ (`SEM_TAXA_CONTRATADA`) |
-| R26 `saida/` com os 6 CSVs de setembro **na raiz** | ❌ hoje vai para `saida/2026-09/exec_*` |
+| R26 `saida/` com os 6 CSVs de setembro **na raiz** | ✅ |
 | R27 ajuste de contestação da Ponte no mês seguinte (P21) | ❌ sem caso em setembro |
 | R28.3 negativo com os dois valores (P23) | ❌ |
-| O1 um comando, nada fixo para setembro, README com chave | ✅ código · ❌ README · ❌ `saida/` na raiz |
+| O1 um comando, nada fixo para setembro, README com chave | ✅ código · ✅ `saida/` na raiz · ⚠️ README (seção do painel feita; resto com o André) |
 | R34 avisar quando o layout quebra; arquivo ausente não segura o mês | ✅ arquivo ausente fecha em parte (gap 18); arquivo com nome trocado é reconhecido pelo conteúdo · ❌ coluna renomeada dentro do arquivo (gap 17) |
 | P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
