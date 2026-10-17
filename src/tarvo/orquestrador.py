@@ -21,8 +21,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from tarvo import casos as casos_mod
 from tarvo import condicoes as cond_mod
-from tarvo import controle, frentes, output, persistencia, rules, sinais
+from tarvo import controle, decisoes, frentes, output, persistencia, rules, sinais
 from tarvo import pendencias as pend_mod
 from tarvo.engines import EngineResult, checkout, extratos, remessa
 from tarvo.loaders import FILES, OPCIONAIS, load_disponiveis
@@ -49,6 +50,8 @@ class ClosingResult:
     commit: str | None
     bloqueios: list[dict] = field(default_factory=list)
     controle: dict = field(default_factory=dict)
+    casos: dict = field(default_factory=dict)                   # id_saida -> Caso
+    aplicacoes_decisoes: list[dict] = field(default_factory=list)
 
 
 def _hash(path: Path) -> str:
@@ -355,7 +358,32 @@ def run_closing(
         duracoes_s=duracoes,
     )
 
-    log.info("fechamento gravado em %s (execucao #%s)", out_dir, execucao_id)
+    # Ciclo de decisão: registra casos e aplica decisões aprovadas aplicáveis.
+    casos_por_id = casos_mod.construir_lote(pendencias, rastro, competencia)
+    aplicacoes_registradas: list[dict] = []
+    for _, caso in casos_por_id.items():
+        decisoes.registrar_caso(saida, caso)
+        aprovada = decisoes.encontrar_decisao_para_caso(saida, caso)
+        if aprovada is None:
+            aprovada = decisoes.encontrar_condicao_aplicavel(saida, caso, competencia)
+        if aprovada is not None:
+            aplicacoes_registradas.append({
+                "caso_hash": caso.caso_hash,
+                "decisao_id": aprovada["id"],
+                "escopo": aprovada["escopo"],
+                "acao_tipo": aprovada["acao_tipo"],
+            })
+            decisoes.registrar_aplicacao(
+                saida,
+                decisao_id=aprovada["id"],
+                caso_hash=caso.caso_hash,
+                execucao_id=execucao_id,
+                competencia=competencia,
+                efeito="RECONHECIDA_NO_FECHAMENTO",
+            )
+
+    log.info("fechamento gravado em %s (execucao #%s); decisões aplicadas: %d",
+             out_dir, execucao_id, len(aplicacoes_registradas))
     return ClosingResult(
         competencia=competencia,
         execucao_id=execucao_id,
@@ -365,4 +393,6 @@ def run_closing(
         problemas_rastro=problemas_df, problemas_integridade=integridade,
         duracoes_s=duracoes, hashes=hashes, commit=commit, bloqueios=bloqueios,
         controle=relatorio_controle,
+        casos=casos_por_id,
+        aplicacoes_decisoes=aplicacoes_registradas,
     )

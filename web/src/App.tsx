@@ -176,6 +176,7 @@ export default function App() {
                             return r.fechamento;
                           })
                         }
+                        aoAtualizar={() => executar("Atualizando o fechamento…", api.fechamento)}
                       />
                     )}
                     {tela === "numeros" && <Numeros f={f} />}

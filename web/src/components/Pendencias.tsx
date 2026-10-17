@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Fechamento, Linha, SinalAberto } from "../api";
 import { ARQUIVO, cnpj, tipoPendencia } from "../format";
+import { FluxoDecisao } from "./FluxoDecisao";
 import { Valor } from "./Valor";
 
 const ORDEM = ["Financeiro", "Financeiro + Comercial", "Comercial"];
@@ -18,9 +19,10 @@ interface Props {
   aoRegistrarCondicao: (sinal?: SinalAberto) => void;
   aoResolverSinal: (sinal: SinalAberto) => void;
   aoVerCondicoes: () => void;
+  aoAtualizar: () => void;
 }
 
-export function Pendencias({ fechamento, sinais, aoRegistrarCondicao, aoResolverSinal, aoVerCondicoes }: Props) {
+export function Pendencias({ fechamento, sinais, aoRegistrarCondicao, aoResolverSinal, aoVerCondicoes, aoAtualizar }: Props) {
   const pend = fechamento.tabelas.pendencias;
   const grupos = useMemo(() => {
     const por: Record<string, Linha[]> = {};
@@ -103,6 +105,13 @@ export function Pendencias({ fechamento, sinais, aoRegistrarCondicao, aoResolver
                             aoResolverSinal={aoResolverSinal}
                             aoVerCondicoes={aoVerCondicoes}
                           />
+                          {fechamento.casos[id] && (
+                            <FluxoDecisao
+                              caso={fechamento.casos[id]}
+                              pendencia={{ id_saida: id, tipo: p.tipo, motivo: p.motivo, valor_brl: p.valor_brl }}
+                              aoAtualizar={aoAtualizar}
+                            />
+                          )}
                         </div>
                       </motion.div>
                     )}

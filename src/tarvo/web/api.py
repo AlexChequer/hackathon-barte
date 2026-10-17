@@ -12,12 +12,13 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from tarvo import autenticacao as auth_mod
 from tarvo import condicoes as cond_mod
-from tarvo import rules, sinais
+from tarvo import decisoes, rules, sinais, tratamentos
 from tarvo.avaliacao import avaliar_e_persistir
 from tarvo.loaders import ESPERADOS, FILES, OPCIONAIS, load_disponiveis
 from tarvo.loaders.identificar import classificar_lote
@@ -80,11 +81,17 @@ def _arquivos(dados: Path) -> list[dict]:
     return achados
 
 
-def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> FastAPI:
+def criar_app(
+    dados: Path,
+    saida: Path,
+    condicoes_path: Path | None = None,
+    usuarios_path: Path | None = None,
+) -> FastAPI:
     app = FastAPI(title="Tarvo · Fechamento", docs_url="/api/docs")
     app.state.dados = Path(dados)
     app.state.saida = Path(saida)
     app.state.condicoes = condicoes_path or cond_mod.CAMINHO_PADRAO
+    app.state.usuarios = usuarios_path or auth_mod.CAMINHO_PADRAO
     app.state.resultado = None
     app.state.avaliacao = None
 
@@ -106,6 +113,10 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
 
     def resposta(r: ClosingResult) -> dict:
         aval = (app.state.avaliacao or {}).get("resumo")
+        casos_por_id = {k: {
+            "caso_hash": c.caso_hash, "tipo": c.tipo, "cnpj": c.cnpj, "ref": c.ref,
+            "competencia": c.competencia, "composicao": list(c.composicao),
+        } for k, c in r.casos.items()}
         return {
             "competencia": r.competencia,
             "execucao_id": r.execucao_id,
@@ -123,7 +134,15 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
             "totais": _totais(r),
             "tabelas": {nome: _registros(getattr(r, nome)) for nome in
                         ("comissoes", "divergencias", "notas", "lancamentos", "pendencias")},
+            "casos": casos_por_id,
+            "aplicacoes_decisoes": r.aplicacoes_decisoes,
         }
+
+    def usuario_de(user: str | None, perfil: str | None) -> auth_mod.Usuario:
+        try:
+            return auth_mod.resolver(user, perfil, caminho=app.state.usuarios)
+        except auth_mod.ErroAutenticacao as exc:
+            raise HTTPException(401, str(exc)) from exc
 
     @app.get("/api/fechamento")
     def get_fechamento() -> dict:
@@ -220,6 +239,166 @@ def criar_app(dados: Path, saida: Path, condicoes_path: Path | None = None) -> F
                 (destino / canonicos[nome]).write_bytes(conteudo)
         app.state.dados = destino
         return resposta(fechar())
+
+    @app.get("/api/tratamentos")
+    def get_tratamentos() -> dict:
+        return {"acoes": [
+            {"tipo": a.tipo, "descricao": a.descricao,
+             "aprovado_por": sorted(a.aprovado_por),
+             "altera_referencia": a.altera_referencia,
+             "altera_calculo": a.altera_calculo,
+             "apenas_operacional": a.apenas_operacional,
+             "parametros_obrigatorios": list(a.parametros_obrigatorios),
+             "tipos_pendencia": list(a.tipos_pendencia)}
+            for a in tratamentos.ACOES.values()
+        ]}
+
+    @app.get("/api/casos/{caso_hash}")
+    def get_caso(caso_hash: str) -> dict:
+        return {
+            "decisoes": decisoes.listar_do_caso(app.state.saida, caso_hash),
+            "eventos": decisoes.eventos_do_caso(app.state.saida, caso_hash),
+            "resultados": decisoes.resultados_do_caso(app.state.saida, caso_hash),
+        }
+
+    @app.get("/api/casos/{caso_hash}/precedentes")
+    def get_precedentes(caso_hash: str) -> dict:
+        r = resultado()
+        caso = next((c for c in r.casos.values() if c.caso_hash == caso_hash), None)
+        if caso is None:
+            raise HTTPException(404, f"caso {caso_hash} não está entre as pendências atuais")
+        return {"precedentes": decisoes.precedentes_para(app.state.saida, caso)}
+
+    @app.post("/api/decisoes", status_code=201)
+    def post_proposta(
+        corpo: dict,
+        x_tarvo_usuario: Annotated[str | None, Header()] = None,
+        x_tarvo_perfil: Annotated[str | None, Header()] = None,
+    ) -> dict:
+        u = usuario_de(x_tarvo_usuario, x_tarvo_perfil)
+        try:
+            return decisoes.salvar_proposta(
+                app.state.saida, usuario=u,
+                caso_hash=corpo.get("caso_hash"),
+                escopo=str(corpo.get("escopo", "CASO")),
+                acao_tipo=str(corpo.get("acao_tipo", "")),
+                parametros=corpo.get("parametros") or {},
+                justificativa=str(corpo.get("justificativa", "")),
+                evidencias=corpo.get("evidencias"),
+                cnpj=corpo.get("cnpj"),
+                modalidade=corpo.get("modalidade"),
+                vigencia_inicio=corpo.get("vigencia_inicio"),
+                vigencia_fim=corpo.get("vigencia_fim"),
+                dependencias=corpo.get("dependencias"),
+                substitui_id=corpo.get("substitui_id"),
+            )
+        except decisoes.DecisaoInvalida as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.post("/api/decisoes/{decisao_id}/aprovar")
+    def post_aprovar(
+        decisao_id: int,
+        corpo: dict | None = None,
+        x_tarvo_usuario: Annotated[str | None, Header()] = None,
+        x_tarvo_perfil: Annotated[str | None, Header()] = None,
+    ) -> dict:
+        u = usuario_de(x_tarvo_usuario, x_tarvo_perfil)
+        corpo = corpo or {}
+        try:
+            decisao = decisoes.aprovar(
+                app.state.saida, decisao_id, usuario=u,
+                hashes_atuais=(app.state.resultado.hashes if app.state.resultado else {}),
+                rules_version=rules.VERSION,
+                aprovacao_externa=corpo.get("aprovacao_externa"),
+            )
+        except decisoes.DecisaoInvalida as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except auth_mod.SemPermissao as exc:
+            raise HTTPException(403, str(exc)) from exc
+        # Para ação REGISTRAR_CONDICAO_COMERCIAL, publicamos a condição (fonte única).
+        if decisao["acao_tipo"] == "REGISTRAR_CONDICAO_COMERCIAL":
+            try:
+                publicado = cond_mod.registrar_condicao(app.state.condicoes, {
+                    **decisao["parametros"],
+                    "fonte": decisao["justificativa"],
+                    "aprovado_por": u.perfil,
+                    "registrado_por": u.nome,
+                })
+            except (ValueError, TypeError) as exc:
+                raise HTTPException(422, f"não publicou condição: {exc}") from exc
+            decisoes.registrar_aplicacao(
+                app.state.saida, decisao_id=decisao_id, caso_hash=decisao.get("caso_hash"),
+                execucao_id=None, competencia=decisao.get("vigencia_inicio", "")[:7] or "",
+                efeito="CONDICAO_PUBLICADA", depois={"condicao_id": publicado["id"]},
+            )
+        if decisao["acao_tipo"] == "CONFIRMAR_ANOTACAO_SEM_EFEITO":
+            cond_mod.registrar_sinal_resolvido(app.state.condicoes, {
+                **decisao["parametros"],
+                "fonte": decisao["justificativa"],
+                "registrado_por": u.nome,
+            })
+            decisoes.registrar_aplicacao(
+                app.state.saida, decisao_id=decisao_id, caso_hash=decisao.get("caso_hash"),
+                execucao_id=None, competencia="", efeito="SINAL_RESOLVIDO",
+            )
+        return {"decisao": decisao, "fechamento": resposta(fechar())}
+
+    @app.post("/api/decisoes/{decisao_id}/rejeitar")
+    def post_rejeitar(
+        decisao_id: int,
+        corpo: dict,
+        x_tarvo_usuario: Annotated[str | None, Header()] = None,
+        x_tarvo_perfil: Annotated[str | None, Header()] = None,
+    ) -> dict:
+        u = usuario_de(x_tarvo_usuario, x_tarvo_perfil)
+        try:
+            return decisoes.rejeitar(app.state.saida, decisao_id, usuario=u,
+                                     motivo=str(corpo.get("motivo", "")))
+        except decisoes.DecisaoInvalida as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except auth_mod.SemPermissao as exc:
+            raise HTTPException(403, str(exc)) from exc
+
+    @app.post("/api/decisoes/{decisao_id}/revogar")
+    def post_revogar(
+        decisao_id: int,
+        corpo: dict,
+        x_tarvo_usuario: Annotated[str | None, Header()] = None,
+        x_tarvo_perfil: Annotated[str | None, Header()] = None,
+    ) -> dict:
+        u = usuario_de(x_tarvo_usuario, x_tarvo_perfil)
+        try:
+            return decisoes.revogar(app.state.saida, decisao_id, usuario=u,
+                                    motivo=str(corpo.get("motivo", "")))
+        except decisoes.DecisaoInvalida as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except auth_mod.SemPermissao as exc:
+            raise HTTPException(403, str(exc)) from exc
+
+    @app.post("/api/casos/{caso_hash}/resultado", status_code=201)
+    def post_resultado(
+        caso_hash: str,
+        corpo: dict,
+        x_tarvo_usuario: Annotated[str | None, Header()] = None,
+        x_tarvo_perfil: Annotated[str | None, Header()] = None,
+    ) -> dict:
+        u = usuario_de(x_tarvo_usuario, x_tarvo_perfil)
+        try:
+            return decisoes.registrar_resultado_operacional(
+                app.state.saida, caso_hash=caso_hash, usuario=u,
+                status=str(corpo.get("status", "")),
+                saldo_centavos=corpo.get("saldo_centavos"),
+                operacoes=corpo.get("operacoes"),
+                evidencia=corpo.get("evidencia"),
+                descricao=corpo.get("descricao"),
+            )
+        except decisoes.DecisaoInvalida as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/api/metricas")
+    def get_metricas() -> dict:
+        comp = app.state.resultado.competencia if app.state.resultado else None
+        return decisoes.metricas(app.state.saida, comp)
 
     if (STATIC / "index.html").exists():
         app.mount("/assets", StaticFiles(directory=STATIC / "assets"), name="assets")
