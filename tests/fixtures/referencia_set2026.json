@@ -1,0 +1,75 @@
+{
+  "_comentario": "Referência manual para set/2026. Cada caso é derivado à mão a partir de data/raw/set2026 + HIPOTESES.md. Não é gerado pelo motor. tarvo.avaliacao compara a saída real com esta tabela e produz avaliacao.json.",
+  "competencia": "2026-09",
+  "comissoes": [
+    {
+      "cnpj": "00520815000100",
+      "lojista": "Casa do Estudante Viagens Ltda",
+      "linha_negocio": "CHECKOUT",
+      "valor_brl": "-5.50",
+      "base_calculo": "Único movimento Casa em set/2026 é o estorno TX88445133 de 21/08 (débito, 1,49%): -369,02 × 1,49% = -5,498 → -5,50 (HALF_UP). Vendas setembro em Casa isenta (contratada=0%) contribuem 0.",
+      "fonte_regra": "R6+P6+R8",
+      "status_revisao": "derivado"
+    }
+  ],
+  "divergencias": [
+    {
+      "ref_origem": "TX88445133",
+      "presente": false,
+      "base_calculo": "Estorno em 07/09 de venda 21/08 Casa Débito 1,49%. Contratada histórica = aplicada = 1,49% → sem divergência.",
+      "fonte_regra": "R6+P6",
+      "status_revisao": "derivado"
+    },
+    {
+      "cnpj": "00520815000100",
+      "linha_negocio": "CHECKOUT",
+      "agregacao": "soma_diferenca_brl",
+      "valor_brl": "15397.42",
+      "base_calculo": "Todas as vendas Casa em setembro têm contratada 0% e aplicada > 0% (Orbe cobrou MDR). Soma de (bruto × aplicada) por venda = R$ 15.397,42.",
+      "fonte_regra": "R1+R6+P6",
+      "status_revisao": "derivado"
+    },
+    {
+      "cnpj": "95927868000148",
+      "linha_negocio": "CHECKOUT",
+      "agregacao": "diferenca_pp_unica",
+      "valor_pp": "0.5000",
+      "base_calculo": "Todas as 87 divergências de Rota Global apresentam aplicada - contratada = +0,50pp.",
+      "fonte_regra": "R1",
+      "status_revisao": "derivado"
+    }
+  ],
+  "notas": [
+    {
+      "tomador_cnpj": "22224579000109",
+      "linha_negocio": "CHECKOUT",
+      "unicidade": 1,
+      "base_calculo": "Bridge tem 2 linhas de vigência. R4 pede 1 nota por CNPJ.",
+      "fonte_regra": "R4",
+      "status_revisao": "derivado"
+    },
+    {
+      "tomador_cnpj": "75374179000146",
+      "tomador": "Ponte Câmbio S.A.",
+      "linha_negocio": "REMESSA",
+      "valor_brl": "39543.45",
+      "base_calculo": "50% da soma de spread_brl das 229 operações válidas (233 total − 4 negativos excluídos − 0 duplicatas descontadas por dedup).",
+      "fonte_regra": "R4+R5+P12+P14",
+      "status_revisao": "derivado"
+    }
+  ],
+  "pendencias": [
+    {"tipo": "SPREAD_NEGATIVO_CONTESTAR", "ref_origem": "PC-0926-0210", "fonte_regra": "R5+P12", "status_revisao": "derivado"},
+    {"tipo": "SPREAD_NEGATIVO_CONTESTAR", "ref_origem": "PC-0926-0326", "fonte_regra": "R5+P12", "status_revisao": "derivado"},
+    {"tipo": "SPREAD_NEGATIVO_CONTESTAR", "ref_origem": "PC-0926-0491", "fonte_regra": "R5+P12", "status_revisao": "derivado"},
+    {"tipo": "SPREAD_NEGATIVO_CONTESTAR", "ref_origem": "PC-0926-0545", "fonte_regra": "R5+P12", "status_revisao": "derivado"},
+    {"tipo": "TRANSFERENCIA_EM_TRANSITO", "count_minimo": 1, "fonte_regra": "R6+P15", "status_revisao": "derivado"},
+    {"tipo": "PIX_NAO_IDENTIFICADO", "count_minimo": 1, "fonte_regra": "R6", "status_revisao": "derivado"},
+    {"tipo": "DEVOLUCAO_LOJISTA_SEM_MOTIVO", "count_minimo": 1, "fonte_regra": "R6", "status_revisao": "derivado"},
+    {"tipo": "NOTA_NEGATIVA", "cnpj": "00520815000100", "valor_brl": "-5.50", "fonte_regra": "R4+P11", "status_revisao": "derivado"}
+  ],
+  "ponte_evidencia": {
+    "duplicata_pc0926_0162_contada_uma_vez": true,
+    "status_compliance_aprovado_c_ressalva_entra": true
+  }
+}

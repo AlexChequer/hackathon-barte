@@ -19,8 +19,9 @@ O que é *interpretação* está marcado como **hipótese** e precisa ir para `H
 - ESTORNO tem `id_referencia` + `data_venda_original`, e **várias vendas originais são de agosto**.
 - ANTECIPACAO (`AN…`) não tem modalidade nem bandeira. Taxa aplicada 2,10%.
 - **Mesmo EC com nomes diferentes**: `Mundo Aberto` / `MUNDO ABERTO INTERCAMBIO`, `EDU ABROAD CONSULTORIA` / `EDUABROAD`, `BEM-VINDO` / `BEM VINDO`… → casar por **EC**, nunca por nome.
-- ECs na Orbe que **não estão** na planilha de taxas: `1043300981 HORIZONTE INTERCAMBIO`, `1043396662 HORIZONTE VIAGENS TURISMO`, `1076801732 ATLAS IDIOMAS`, `1038867654 KIWI EXPERIENCE`.
-- Esses 4 ECs somam **290 transações** sem taxa contratada (Kiwi 85, Horizonte Intercâmbio 73, Horizonte Viagens Turismo 75, Atlas 57).
+- ECs na Orbe que **não estão** na planilha de taxas (linhas sem EC): `1043300981 HORIZONTE INTERCAMBIO`, `1043396662 HORIZONTE VIAGENS TURISMO`, `1076801732 ATLAS IDIOMAS`, `1038867654 KIWI EXPERIENCE`.
+- Três resolvidos por R3 via de-para explícito: Novo Horizonte, Horizonte Viagens e Kiwi têm CNPJ e taxas nas respectivas linhas da aba vigente. **Atlas segue sem contrato vigente** (P10): o motor não fatura, não emite nota, não inventa taxa.
+- Esses 4 ECs somam **290 transações** (Kiwi 85, Horizonte Intercâmbio 73, Horizonte Viagens Turismo 75, Atlas 57).
 - Comparação exploratória entre a taxa aplicada e a contratada por EC + modalidade, **sem considerar a vigência**:
   - **Rota Global (1074504011)**: +0,50 p.p. em **todo crédito** (vista 2,49→2,99, 2–6x 2,99→3,49, 7–12x 3,59→4,09), em 87 transações. Débito e Pix batem. **Começa em 12/09**: até 11/09 o crédito bate com a planilha. A planilha foi atualizada pela última vez em 02/09. Hipóteses: renegociação que não entrou na planilha **ou** erro de cadastro na Orbe.
   - **Bridge (1075624862)**: com a vigência pela data da venda (R2/P3), as vendas a 2,19% de 23/09 em diante estão corretas. **Mas de 15/09 a 18/09 a Orbe ainda cobrou 2,59%** (5 vendas): divergência real, porque a Orbe demorou a atualizar.
@@ -34,7 +35,7 @@ O que é *interpretação* está marcado como **hipótese** e precisa ir para `H
 - **Bridge tem 2 linhas**: crédito à vista 2,59% até 14/09 e 2,19% a partir de 15/09.
 - **EC vazio**: Horizonte Viagens, Kiwi (`EC pendente`), Novo Horizonte, Ponte Aérea e Nórdica (as duas últimas são "só remessa").
 - **Nomes parecidos e perigosos**: `Horizonte Viagens` × `Novo Horizonte Intercambio` × Orbe `HORIZONTE INTERCAMBIO` / `HORIZONTE VIAGENS TURISMO`.
-- `Spread remessa`: vazio = "padrão" (rodapé), Canguru = texto `'padrão'`. **O valor do padrão não está escrito.** As operações da Ponte sugerem 1,5%, mas isso é **hipótese**.
+- `Spread remessa`: vazio = "padrão" (rodapé), Canguru = texto `'padrão'`. Resolvido em R5: padrão = 1,5% sobre PTAX. Texto inválido fora de `padrão`/vazio continua pendência técnica, não default silencioso.
 - Globo Trotter: `INATIVO desde jul/26`, sem vigência.
 - Atlas Idiomas está **só** na aba antiga, mas transaciona na Orbe.
 - `Casa do Estudante`: obs "cliente estratégico - ver c/ comercial".
@@ -42,7 +43,7 @@ O que é *interpretação* está marcado como **hipótese** e precisa ir para `H
 
 ## 03 Ponte Câmbio
 
-- O e-mail diz: **repasse de 50% do spread realizado**, crédito em 06/10, **mediante nota fiscal de intermediação** → a nota da REMESSA provavelmente é para a **Ponte** (CNPJ 75.374.179/0001-46), não para o lojista. **Hipótese; confirmar.**
+- O e-mail diz: **repasse de 50% do spread realizado**, crédito em 06/10, **mediante nota fiscal de intermediação**. Confirmado em R4: a nota é única, para a Ponte (CNPJ 75.374.179/0001-46), com a soma das participações por operação. Diferença contra o total declarado da Ponte não é somada à nota — vira pendência (P14).
 - O e-mail também diz que "APROVADO C/ RESSALVA" segue para liquidação (16 operações).
 - Rodapé: 233 operações, spread total R$ 78.073,59, e **a soma das linhas bate**. Só que:
   - `PC-0926-0162` (Bagagem Livre) aparece **2 vezes**, idêntica, com obs `reprocessada`. O total da Ponte conta as duas.
