@@ -16,6 +16,11 @@ import pandas as pd
 from tarvo import condicoes as cond_mod
 from tarvo import rules
 from tarvo.engines import EngineResult
+from tarvo.engines.checkout_pendencias import (
+    divergencias_condicao,
+    nome_lojista,
+    pendencias_contestacao_orbe,
+)
 from tarvo.money import ZERO, pct, q, q_mul, sum_q
 
 ARQUIVO_ORBE = "orbe"
@@ -356,7 +361,7 @@ def run(
     if not linhas_df.empty:
         # R4: 1 nota por CNPJ. Bridge tem 2 linhas de vigência com mesmo CNPJ: colapsa aqui.
         for cnpj, grupo in linhas_df.groupby("cnpj", sort=True):
-            lojista = _canonical_lojista(grupo)
+            lojista = nome_lojista(grupo)
             total_comissao = sum_q(grupo["comissao"])
             id_saida = f"CK-CM-{competencia}-{cnpj}"
             comissoes_rows.append({
@@ -454,10 +459,12 @@ def run(
                 "metadata": "divergencia_checkout",
             })
 
-        cond_rows, cond_rastro, cond_pend = _divergencias_condicao(linhas_df, condicoes, competencia)
+        cond_rows, cond_rastro, cond_pend = divergencias_condicao(linhas_df, condicoes, competencia)
         divergencias_rows.extend(cond_rows)
         rastro_rows.extend(cond_rastro)
-        pendencias_cond = cond_pend
+        contest_rastro, contest_pend = pendencias_contestacao_orbe(linhas_df, competencia)
+        rastro_rows.extend(contest_rastro)
+        pendencias_cond = cond_pend + contest_pend
     else:
         pendencias_cond = []
 
@@ -485,54 +492,6 @@ def run(
     return result
 
 
-def _divergencias_condicao(
-    linhas_df: pd.DataFrame, condicoes: tuple[cond_mod.Condicao, ...], competencia: str
-) -> tuple[list[dict], list[dict], list[dict]]:
-    """Linhas CK-COND (detalhe por transação) + 1 pendência por lojista com o total (R22, R24.1).
-
-    Não entra na cobrança da Orbe: a Orbe cobrou certo pela planilha (R16.1). Pendência para o
-    Financeiro com o Comercial: devolver ao lojista, atualizar a planilha e avisar a Orbe.
-    """
-    por_id = {c.id: c for c in condicoes}
-    divergencias, rastro, pendencias = [], [], []
-    marcadas = linhas_df[linhas_df["divergencia_condicao"] != ZERO]
-    for cnpj, grupo in marcadas.groupby("cnpj", sort=True):
-        pend_id = f"CK-COND-PEND-{competencia}-{cnpj}"
-        for _, tx in grupo.iterrows():
-            div_id = f"CK-COND-{tx['id_transacao']}"
-            divergencias.append({
-                "id_saida": div_id,
-                "cnpj": cnpj,
-                "linha_negocio": "CHECKOUT",
-                "ref_origem": tx["id_transacao"],
-                "taxa_contratada_pct": pct(tx["taxa_contratada"]),
-                "taxa_aplicada_pct": pct(tx["taxa_planilha"]),
-                "diferenca_brl": tx["divergencia_condicao"],
-            })
-            for id_saida, meta in [(div_id, f"divergencia_condicao;{tx['condicao_id']}"),
-                                   (pend_id, f"pendencia_CONDICAO_NAO_INFORMADA_ORBE;{tx['condicao_id']}")]:
-                rastro.append({"id_saida": id_saida, "arquivo_origem": ARQUIVO_ORBE,
-                               "ref_origem": tx["id_transacao"], "valor": tx["divergencia_condicao"],
-                               "metadata": meta})
-        total = sum_q(grupo["divergencia_condicao"])
-        conds = [por_id[c] for c in sorted(set(grupo["condicao_id"]))]
-        fontes = "; ".join(f"{c.id} ({c.fonte}, aprovado por {c.aprovado_por})" for c in conds)
-        pendencias.append({
-            "id": pend_id,  # rastro já emitido por transação acima; não passa pelo laço genérico
-            "tipo": "CONDICAO_NAO_INFORMADA_ORBE",
-            "ref_origem": cnpj,
-            "valor_brl": total,
-            "motivo": (
-                f"{_canonical_lojista(grupo)}: a Orbe cobrou a taxa da planilha em {len(grupo)} transações, "
-                f"mas vale condição comercial registrada fora dela ({fontes}). Devolver {total} ao lojista; "
-                "não cobrar da Orbe (R16.1, R22). Atualizar a planilha e avisar a Orbe. "
-                "Detalhe por transação: linhas CK-COND-* em divergencias_taxa."
-            ),
-            "quem_decide": "Financeiro + Comercial",
-        })
-    return divergencias, rastro, pendencias
-
-
 def _competencia_fmt(competencia: str) -> str:
     """Aceita '2026-09' (ISO) ou 'set2026' e devolve '09/2026'."""
     if len(competencia) == 7 and competencia[4] == "-":
@@ -545,12 +504,6 @@ def _competencia_fmt(competencia: str) -> str:
         mes, ano = competencia[:3], competencia[3:]
         return f"{meses.get(mes.lower(), mes)}/{ano}"
     return competencia
-
-
-def _canonical_lojista(grupo: pd.DataFrame) -> str:
-    """Escolhe um nome representativo quando o CNPJ aparece em 2 linhas (ex.: Bridge)."""
-    nomes = grupo["lojista"].dropna().unique().tolist()
-    return max(nomes, key=len) if nomes else "?"
 
 
 def _explicar_zero(grupo: pd.DataFrame) -> list[str]:
