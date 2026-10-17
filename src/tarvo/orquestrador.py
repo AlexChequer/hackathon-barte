@@ -65,10 +65,32 @@ def _mesclar(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     return pd.concat(nonempty, ignore_index=True)
 
 
-def run_closing(dados: Path, saida: Path, competencia: str) -> ClosingResult:
+# Fonte e coluna de data que definem a competência de cada arquivo (R2: data do movimento;
+# R5: data de contratação).
+DATAS_COMPETENCIA = {"orbe": "data_movimento", "ponte": "data_contratacao"}
+
+
+def inferir_competencia(sources: dict[str, pd.DataFrame]) -> str:
+    """AAAA-MM mais frequente nas datas da Orbe e da Ponte. Sem datas → ValueError."""
+    meses = pd.concat([
+        sources[k][col].dropna().map(lambda d: f"{d.year:04d}-{d.month:02d}")
+        for k, col in DATAS_COMPETENCIA.items() if k in sources
+    ])
+    if meses.empty:
+        raise ValueError("não foi possível inferir a competência: arquivos sem datas")
+    contagem = meses.value_counts()
+    if len(contagem) > 1:
+        log.warning("datas de mais de um mês nos arquivos: %s", contagem.to_dict())
+    return str(contagem.index[0])
+
+
+def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> ClosingResult:
     t0 = time.perf_counter()
     sources = load_all(dados)
     t_load = time.perf_counter() - t0
+    if competencia is None:
+        competencia = inferir_competencia(sources)
+        log.info("competência inferida dos dados: %s", competencia)
 
     hashes = {k: _hash(dados / sorted(dados.glob(FILES[k]))[0].name) for k in FILES}
     commit = _git_commit(dados.parent.parent)

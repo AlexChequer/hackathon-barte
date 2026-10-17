@@ -7,7 +7,7 @@ só contas analíticas que aceitam lançamento). Casos sem regra viram pendênci
 
 from __future__ import annotations
 
-import datetime as dt
+import re
 from decimal import Decimal
 
 import pandas as pd
@@ -23,26 +23,18 @@ CONFIANCA_PENDENTE = Decimal("0.00")
 def _classifica_aurora(row: pd.Series) -> dict:
     """Classifica uma linha do Aurora. Retorna dict com conta, metodo, motivo e opcional pendência."""
     desc = (row["descricao"] or "").upper()
-    data = row["data"]
     # Entradas da Orbe (TED RECEBIDA ... ORBE ADQUIRENCIA)
     if "TED RECEBIDA" in desc and "ORBE" in desc:
         return _res(rules.CONTA_RECEBIMENTO_ORBE, motivo="Recebimento TED da Orbe (R9).")
     # Transferência entre contas próprias (Aurora → Meridiano)
-    if "TRANSF ENTRE CONTAS" in desc and "MERIDIANO" in desc:
-        pend = None
-        # Transferência em 30/09 ainda não cai no Meridiano em setembro (R6: cai em 01/10).
-        if isinstance(data, dt.date) and data == dt.date(2026, 9, 30):
-            pend = {
-                "tipo": "TRANSFERENCIA_EM_TRANSITO",
-                "motivo": "Saída de 300.000 em 30/09 só credita no Meridiano em 01/10. Mantém em trânsito.",
-                "quem_decide": "Financeiro",
-            }
+    if _eh_saida_transferencia_propria(desc):
+        # A pendência de "em trânsito" é decidida no run(), cruzando com o outro banco.
         return _res(rules.CONTA_TRANSFERENCIA_PROPRIA,
-                    motivo="Transferência entre contas próprias (Aurora→Meridiano).", pendencia=pend)
-    # Folha salários agosto (R6 → baixa 2.1.04.001)
+                    motivo="Transferência entre contas próprias (Aurora→Meridiano).")
+    # Folha do mês anterior (R6 → baixa 2.1.04.001)
     if "PAGTO SALARIOS" in desc or "FOLHA" in desc:
         return _res(rules.CONTA_BAIXA_PASSIVO["folha"],
-                    motivo="Baixa de folha de agosto já provisionada (R6).")
+                    motivo="Baixa de folha do mês anterior já provisionada (R6).")
     # Impostos/contribuições baixa de passivo
     for chave, codigo in [
         ("INSS", rules.CONTA_BAIXA_PASSIVO["inss"]),
@@ -53,7 +45,8 @@ def _classifica_aurora(row: pd.Series) -> dict:
         ("DARF 2172", rules.CONTA_BAIXA_PASSIVO["cofins"]),
     ]:
         if chave in desc:
-            return _res(codigo, motivo=f"Baixa de obrigação fiscal de agosto já provisionada ({chave}, R6).")
+            return _res(codigo,
+                        motivo=f"Baixa de obrigação fiscal do mês anterior já provisionada ({chave}, R6).")
     # Despesas administrativas diretas (R9)
     if "TAR " in desc or "TARIFA" in desc or "TAR PACOTE" in desc:
         return _res(rules.CONTA_DESPESAS_DIRETAS["tarifa"], motivo="Tarifa bancária (despesa direta, R9).")
@@ -97,13 +90,16 @@ def _classifica_aurora(row: pd.Series) -> dict:
 def _classifica_meridiano(row: pd.Series) -> dict:
     desc = (row["descricao"] or "").upper()
     # TED RECEB da própria Tarvo (chegada de transferência entre contas)
-    if "TED RECEBIDA" in desc and ("TARVO PAGAMENTOS" in desc or "MESMA TITULARIDADE" in desc):
+    if _eh_chegada_transferencia_propria(desc):
         return _res(rules.CONTA_TRANSFERENCIA_PROPRIA,
                     motivo="Chegada de transferência entre contas próprias (R9).")
-    # TED RECEB PONTE CAMBIO REPASSE COMISSAO 08/2026 (R6)
-    if "TED RECEB PONTE CAMBIO" in desc and "REPASSE COMISSAO 08/2026" in desc:
-        return _res(rules.CONTA_BAIXA_PASSIVO["repasse_ponte_08"],
-                    motivo="Baixa de comissão de câmbio 08/2026 já provisionada (R6).")
+    # Repasse da Ponte de comissão de mês anterior ao lançamento → baixa do recebível (R6, R9)
+    if "TED RECEB PONTE CAMBIO" in desc and (ref := _mes_referencia_repasse(desc)):
+        mes, ano = ref
+        data = row["data"]
+        if (ano, mes) < (data.year, data.month):
+            return _res(rules.CONTA_BAIXA_PASSIVO["repasse_ponte"],
+                        motivo=f"Baixa de comissão de câmbio {mes:02d}/{ano} já provisionada (R6).")
     # PIX RECEB PONTE AÉREA ESTUDANTIL = lojista (não Ponte Câmbio)
     if "PIX RECEB" in desc and "PONTE AEREA" in _ascii(desc):
         return _res(rules.CONTA_RECURSO_LOJISTA_REMESSA,
@@ -146,6 +142,47 @@ def _ascii(s: str) -> str:
          .replace("Ú", "U").replace("Â", "A").replace("Ê", "E").replace("Ô", "O")
          .replace("Ã", "A").replace("Õ", "O").replace("Ç", "C")
     )
+
+
+def _mes_referencia_repasse(desc: str) -> tuple[int, int] | None:
+    """'... REPASSE COMISSAO 08/2026' → (8, 2026)."""
+    m = re.search(r"REPASSE COMISSAO (\d{2})/(\d{4})", desc)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def _eh_saida_transferencia_propria(desc: str) -> bool:
+    return "TRANSF ENTRE CONTAS" in desc and "MERIDIANO" in desc
+
+
+def _eh_chegada_transferencia_propria(desc: str) -> bool:
+    return "TED RECEBIDA" in desc and ("TARVO PAGAMENTOS" in desc or "MESMA TITULARIDADE" in desc)
+
+
+def _transferencias_em_transito(aurora: pd.DataFrame, meridiano: pd.DataFrame) -> set[str]:
+    """Saídas Aurora→Meridiano sem chegada correspondente (mesmo valor, data ≥ saída) no Meridiano.
+
+    Casamento 1-para-1 por valor exato, na ordem das datas. Vale para qualquer mês (R6: a de 30/09
+    só cai em 01/10, fora do extrato de setembro).
+    """
+    chegadas = [
+        (r["data"], r["valor"]) for _, r in meridiano.iterrows()
+        if _eh_chegada_transferencia_propria((r["descricao"] or "").upper())
+    ]
+    saidas = sorted(
+        ((r["data"], -r["valor"], r["ref_origem"]) for _, r in aurora.iterrows()
+         if _eh_saida_transferencia_propria((r["descricao"] or "").upper())),
+        key=lambda t: t[0],
+    )
+    usadas: set[int] = set()
+    em_transito: set[str] = set()
+    for data_saida, valor, ref in saidas:
+        par = next((i for i, (d, v) in enumerate(chegadas)
+                    if i not in usadas and v == valor and d >= data_saida), None)
+        if par is None:
+            em_transito.add(ref)
+        else:
+            usadas.add(par)
+    return em_transito
 
 
 def _res(conta: str, *, motivo: str, pendencia: dict | None = None) -> dict:
@@ -219,8 +256,17 @@ def run(aurora: pd.DataFrame, meridiano: pd.DataFrame, plano: pd.DataFrame, comp
                 "metadata": f"pendencia_{pend['tipo']}",
             })
 
+    em_transito = _transferencias_em_transito(aurora, meridiano)
     for _, row in aurora.iterrows():
-        _emit("AURORA", row, _classifica_aurora(row))
+        cls = _classifica_aurora(row)
+        if row["ref_origem"] in em_transito:
+            cls = {**cls, "pendencia": {
+                "tipo": "TRANSFERENCIA_EM_TRANSITO",
+                "motivo": (f"Saída de {q(-row['valor'])} para o Meridiano em {row['data']} sem chegada "
+                           "no extrato do Meridiano do mês. Mantém em trânsito (R6)."),
+                "quem_decide": "Financeiro",
+            }}
+        _emit("AURORA", row, cls)
     for _, row in meridiano.iterrows():
         _emit("MERIDIANO", row, _classifica_meridiano(row))
 

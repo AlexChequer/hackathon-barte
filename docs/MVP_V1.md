@@ -136,11 +136,12 @@ EC 1076801732 não tem contrato vigente. R3 lista o que **tem** contrato; o rest
 que apareça na Orbe vira pendência `SEM_CONTRATO` com valor da cobrança da Orbe
 (exposição bruta). Nunca fatura, nunca cria nota, nunca estima taxa.
 
-### Ponte Câmbio: 4 negativos excluídos **só em set/2026**
+### Ponte Câmbio: todo spread negativo fica fora (R5)
 
-`rules.PONTE_NEGATIVOS_EXCLUIR_SET2026` lista 4 operações. A exclusão é
-condicional à competência (P12). Negativos em outras competências abrem
-pendência `SPREAD_NEGATIVO_SEM_EVIDENCIA`, não excluem automaticamente.
+Qualquer operação com `spread_brl < 0`, em qualquer mês, fica fora da comissão e da nota e vira
+pendência `SPREAD_NEGATIVO_CONTESTAR` (valor cheio, `quem_decide = Financeiro`), com a observação da
+Ponte no motivo. Antes era uma lista fixa dos 4 ids de setembro (P12), o que violava O1 ("nada fixo
+para setembro"). A pergunta R-1 confirma a regra geral com a Helena.
 Status compliance "APROVADO C/ RESSALVA" entra como válido (R5).
 
 ### Reversão de antecipação anula a comissão arredondada original

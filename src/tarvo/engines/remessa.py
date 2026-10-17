@@ -109,8 +109,11 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             })
             continue
 
-        # Exclusão dos 4 negativos de setembro (P12). Aceita "2026-09" (ISO) ou "set2026".
-        if competencia in {"2026-09", "set2026"} and n_op in rules.PONTE_NEGATIVOS_EXCLUIR_SET2026:
+        # R5: spread negativo não é aceito, em qualquer mês. Fica fora da comissão e da nota
+        # e vira pendência de contestação com o valor cheio da operação (R12). Quem decide
+        # é a Helena; a Ponte é a destinatária da contestação (R11, R12).
+        if spread_brl < 0:
+            obs = op.get("observacao") or ""
             pendencias.append({
                 "id": f"RM-NEG-{n_op}",
                 "tipo": "SPREAD_NEGATIVO_CONTESTAR",
@@ -118,24 +121,9 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "arquivo_origem": ARQUIVO_PONTE,
                 "valor_brl": q(spread_brl),
                 "motivo": (
-                    f"Spread negativo (D-1 fora do prazo de 2h) em {n_op} ({cliente})"
-                    ": fora da comissão/nota."
+                    f"Spread negativo em {n_op} ({cliente}): fora da comissão e da nota (R5). "
+                    f"Contestar com a Ponte.{f' Obs. da Ponte: {obs}.' if obs else ''}"
                 ),
-                "quem_decide": "Ponte Câmbio",
-                "cnpj": cnpj,
-                "linha_negocio": "REMESSA",
-            })
-            continue
-
-        # Spread negativo em geral (sem evidência de que passou do prazo): pendência, não exclusão automática.
-        if spread_brl < 0:
-            pendencias.append({
-                "id": f"RM-NEGSEMEV-{n_op}",
-                "tipo": "SPREAD_NEGATIVO_SEM_EVIDENCIA",
-                "ref_origem": n_op,
-                "arquivo_origem": ARQUIVO_PONTE,
-                "valor_brl": q(spread_brl),
-                "motivo": f"Spread negativo em {n_op} ({cliente}); sem evidência de prazo ultrapassado.",
                 "quem_decide": "Financeiro",
                 "cnpj": cnpj,
                 "linha_negocio": "REMESSA",

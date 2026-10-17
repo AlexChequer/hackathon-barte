@@ -50,7 +50,7 @@ with st.sidebar:
     st.title("Fechamento Tarvo")
     dados = Path(st.text_input("Pasta `data/raw/<competencia>`", str(DEFAULT_DADOS)))
     saida = Path(st.text_input("Pasta `saida/`", str(DEFAULT_SAIDA)))
-    competencia = st.text_input("Competência (AAAA-MM)", "2026-09")
+    competencia = st.text_input("Competência (AAAA-MM; vazio = inferir dos dados)", "").strip() or None
     fixtures = Path(st.text_input("Pasta de referência", str(DEFAULT_FIXTURES)))
     rodar = st.button("Rodar fechamento", type="primary", use_container_width=True)
     st.caption(f"Regras: `{rules.VERSION}`")
@@ -77,6 +77,7 @@ if rodar:
     try:
         with st.spinner("Rodando engines…"):
             resultado = run_closing(dados, saida, competencia)
+            st.session_state["competencia"] = resultado.competencia
             relatorio = avaliar_e_persistir(resultado, fixtures_dir=fixtures, saida=saida)
         st.success(f"Execução #{resultado.execucao_id} gravada em `{resultado.out_dir}`.")
         if not resultado.problemas_rastro.empty:
@@ -88,6 +89,10 @@ if rodar:
 
 
 # ---------- Última execução ----------
+competencia = competencia or st.session_state.get("competencia")
+if competencia is None:
+    st.info("Nenhuma execução ainda. Rode o fechamento no menu lateral.")
+    st.stop()
 exec_dir = _ultimo_dir(saida, competencia)
 if exec_dir is None:
     st.info("Nenhuma execução ainda. Rode o fechamento no menu lateral.")
