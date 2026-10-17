@@ -22,6 +22,24 @@ python -m tarvo --dados data/raw/set2026 --saida saida
 pytest
 ```
 
+### Painel (tela)
+
+```bash
+python -m tarvo.web --dados data/raw/set2026
+```
+
+Abre `http://127.0.0.1:8000` no navegador. A tela usa o mesmo motor da linha de comando e mostra:
+
+- **Pendências:** a fila, por quem decide.
+- **Comissões e notas.**
+- **Divergências:** separadas em cobrar da Orbe, devolver ao lojista e contestar com a Ponte.
+- **Lançamentos.**
+- **Condições comerciais:** formulário para registrar, por exemplo, uma isenção até dezembro. O registro vale para os próximos meses.
+
+Todo valor é clicável e abre as linhas de origem que somam até ele. "Enviar arquivos do mês" fecha um mês novo por upload, sem mexer na pasta.
+
+O front (React + TypeScript em `web/`) já vai compilado dentro do pacote, então não precisa de Node para rodar. Para desenvolver o front: `cd web && npm install && npm run dev`, com a API rodando em `:8000`. Para regenerar o build: `npm run build`.
+
 Para outubro, basta apontar `--dados` para a pasta com os arquivos novos, no mesmo formato. Os arquivos são localizados por padrão de nome (`src/tarvo/loaders/__init__.py`).
 
 **Chaves necessárias:** nenhuma por enquanto. Se a classificação por IA entrar, ver `.env.example`.

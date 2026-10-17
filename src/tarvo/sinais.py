@@ -143,6 +143,21 @@ def _coberto(sinal: Sinal, competencia: str, condicoes, resolvidos) -> bool:
     return any(r.cnpj == sinal.cnpj and r.texto == sinal.texto for r in resolvidos)
 
 
+def id_pendencia(competencia: str, sinal: Sinal) -> str:
+    """Id estável do sinal: o mesmo texto do mesmo lojista gera o mesmo id em toda execução."""
+    chave = hashlib.sha1(f"{sinal.cnpj}|{sinal.texto}".encode()).hexdigest()[:8]
+    return f"TX-SINAL-{competencia}-{sinal.cnpj}-{chave}"
+
+
+def abertos(
+    taxas: pd.DataFrame, competencia: str, condicoes: tuple, resolvidos: tuple,
+    classificador: Classificador | None = None,
+) -> list[tuple[SinalMarcado, str]]:
+    """Sinais marcados sem condição registrada nem resolução: (sinal, id da pendência)."""
+    return [(m, id_pendencia(competencia, m.sinal)) for m in detectar(extrair(taxas), classificador)
+            if not _coberto(m.sinal, competencia, condicoes, resolvidos)]
+
+
 def run(
     taxas: pd.DataFrame,
     competencia: str,
@@ -158,8 +173,7 @@ def run(
         s = m.sinal
         if _coberto(s, competencia, condicoes, resolvidos):
             continue
-        chave = hashlib.sha1(f"{s.cnpj}|{s.texto}".encode()).hexdigest()[:8]
-        pend_id = f"TX-SINAL-{competencia}-{s.cnpj}-{chave}"
+        pend_id = id_pendencia(competencia, s)
         pendencias.append({
             "id_saida": pend_id,
             "tipo": "CONDICAO_ESPECIAL_A_CONFIRMAR",

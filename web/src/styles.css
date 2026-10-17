@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* Mundo: papel de razão contábil sob luz de escritório. Neutros frios levemente tingidos,
+   uma única cor (âmbar de lápis de conferência) para o que pede decisão de alguém. */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-papel: oklch(0.985 0.003 250);
+  --color-folha: oklch(1 0 0);
+  --color-linha: oklch(0.92 0.006 250);
+  --color-linha-forte: oklch(0.86 0.008 250);
+  --color-tinta: oklch(0.24 0.02 255);
+  --color-tinta-2: oklch(0.45 0.015 255);
+  --color-tinta-3: oklch(0.58 0.012 255);
+  --color-decisao: oklch(0.7 0.15 62);
+  --color-decisao-tinta: oklch(0.47 0.12 55);
+  --color-decisao-fundo: oklch(0.97 0.03 75);
+  --color-erro: oklch(0.52 0.17 25);
+
+  --ease-saida: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    color: var(--color-tinta);
+    background: var(--color-papel);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "tnum" 1, "cv11" 1;
+  }
+  ::selection {
+    background: var(--color-decisao-fundo);
+    color: var(--color-tinta);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-decisao);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-linha-forte) transparent;
+  }
+  input,
+  select,
+  textarea {
+    caret-color: var(--color-decisao-tinta);
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
