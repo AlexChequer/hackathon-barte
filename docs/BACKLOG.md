@@ -6,6 +6,8 @@ Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relat�
 
 ## Transversal (bloqueia a entrega, O1)
 
+- [ ] 🟢 Cada regra em `rules.py` cita a resposta e quem aprovou (R20: Comercial para taxa/condição, Financeiro para regra de fechamento).
+
 - [ ] 🟢 **`saida/` com os 6 CSVs commitados na raiz.** Hoje `saida/` está no `.gitignore` e o motor grava em `saida/<comp>/exec_*/`. A banca compara com o `saida/` entregue.
 - [x] 🟢 **Nada fixo para setembro** (branch `feat/generalizar-meses`): negativos por regra geral (P12), trânsito por cruzamento Aurora × Meridiano, competência inferida das datas, repasse da Ponte por "mês anterior", textos sem "agosto". Antes: `rules.PONTE_NEGATIVOS_EXCLUIR_SET2026` (ids), `extratos.py:34` (data 30/09), `--competencia` com default `2026-09` (inferir dos dados), textos "de agosto" nos motivos (derivar de competência − 1).
 - [ ] 🟢 **README**: um comando, onde pôr os arquivos do mês, onde configurar a chave de API (`.env`).
@@ -15,27 +17,31 @@ Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relat�
 
 ## Checkout
 
-- [ ] 🔒 📋 **Divergência vira pendência para a Helena?** R1 diz que ela decide caso a caso; na remessa ela pediu pendência (R10, R12). Esperar Barteman P3; depois a nossa C2 (por transação ou por lojista).
-- [ ] 🔒 **Estorno de venda divergente** gera divergência negativa (5 casos, −107,53). Esperar Barteman P2 (é a nossa C1).
-- [ ] 🔒 **Orbe cobrando abaixo do contrato** (P4, sem caso em setembro). Esperar Barteman P4.
-- [ ] 🔒 📋 **Antecipação acima das vendas** (Atlas, R$ 179,6 mil × R$ 55,4 mil). Esperar Barteman P8; se for alerta, vira pendência com regra genérica (Σ antecipado > Σ vendido no mês).
-- [ ] 🔒 **Atlas confirmada depois**: puxa linhas de meses anteriores? Esperar Nader (MN AI). Afeta o desenho de outubro.
+- [ ] 🟢 📋 **Casa do Estudante fora de `divergencias_taxa`** (R16.1): vira pendência de devolução ao lojista (Financeiro + Comercial), com o valor (R$ 15,4 mil). Não é cobrança da Orbe.
+
+- [x] ~~Divergência vira pendência?~~ R16: divergência de contrato fica em `divergencias_taxa` (Helena decide caso a caso); **Casa é outra natureza** (item abaixo).
+- [x] **Estorno de venda divergente** (R16.3: venda e estorno se anulam, cobra só o líquido). Já é o que o motor faz.
+- [x] **Orbe cobrando abaixo do contrato** (R16.7: é divergência, caso a caso; sem caso em setembro).
+- [ ] 🟢 📋 **Alerta de antecipação acima das vendas** (R16.6): Σ antecipado > Σ vendido do lojista no mês → pendência para Financeiro + Comercial.
+- [ ] 🟢 **Atlas confirmada depois** (R18): taxa vale desde 10/09; outubro puxa as linhas pendentes de setembro. Persistir as linhas de EC sem contrato para o próximo fechamento.
 
 ## Remessa
+
+- [ ] 🟢 CNPJ da Ponte fora da planilha (P16): calcula a metade e abre pendência de cadastro (Comercial). Sem caso em setembro.
 
 - [ ] 🟢 📋 **Pendência de contestação da Mundo Aberto** (R10, R12): uma por operação (23, R$ 1.418,85), com valor cheio e `ref_origem`.
 - [ ] 🟢 📋 **Pendência da duplicata `PC-0926-0162`** (R12): entra na lista para a Ponte corrigir o relatório.
 - [ ] 🟢 **`quem_decide` = Financeiro** (R11, R12): negativos já feitos; faltam duplicata conflitante, status desconhecido e `RM-CONTEST`. A Ponte é destinatária da contestação, não quem decide.
 - [ ] 🟢 📋 **`RM-CONTEST`** vira "conferir o TED de repasse quando cair" (R11), sem supor desconto da Ponte.
 - [x] **Negativos sem lista fixa**: regra geral pela R5 (P12 atualizada); a pergunta R-1 só confirma.
-- [ ] 🔒 Negativos também em `divergencias_taxa`? Esperar MN AI / Barteman P5 / Desbravadores.
+- [x] Negativos **não** entram em `divergencias_taxa` (R15: lojista não pagou a mais). Já está assim.
 
 ## Extratos
 
 - [x] 🟢 📋 **Transferência em trânsito genérica**: saída "TRANSF ENTRE CONTAS" sem crédito correspondente no outro banco dentro do mês → pendência. Tira a data fixa.
-- [ ] 🔒 📋 **PIX sem remessa correspondente** (`MRD2026090425`, R$ 18.240,00): casar PIX da Ponte Aérea × operações da Ponte (valor + IOF); sem par → pendência. Esperar Barteman P6 / Desbravadores.
-- [ ] 🔒 Devolução L65: 2.1.01.001 ou 2.1.01.002? Esperar Desbravadores.
-- [ ] 🔒 Provisionamento de folha/impostos é sempre ou só agosto? Esperar Desbravadores. Afeta outubro.
+- [x] **PIX `MRD2026090425`** (R16.5, R17): recurso de lojista para remessa de outubro, 2.1.02.001. Já está assim. Opcional: casar PIX × operação e anotar "remessa futura" no motivo.
+- [x] Devolução L65 em 2.1.01.001 (R19, P17).
+- [x] Folha/impostos sempre provisionados (R19). Regra já generalizada.
 - [ ] 🟢 **Fallback LLM** para descrição sem regra: sugere conta com `metodo = LLM` e `confianca` < 1, sempre com pendência de revisão. Hoje 184/184 por regra; o caminho LLM precisa existir para outubro (e é o que a chave de API do O1 sugere).
 - [ ] 🟢 `confianca` do L50 (PIX não identificado) não pode ser 1,00.
 
