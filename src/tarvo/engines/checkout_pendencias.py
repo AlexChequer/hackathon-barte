@@ -17,7 +17,7 @@ import pandas as pd
 from tarvo import rules
 from tarvo.condicoes import Condicao
 from tarvo.engines import checkout_causa
-from tarvo.money import ZERO, pct, q, sum_q
+from tarvo.money import ZERO, brl, pct, pct_br, q, sum_q
 
 ARQUIVO_ORBE = "orbe"
 
@@ -31,7 +31,8 @@ def nome_lojista(grupo: pd.DataFrame) -> str:
 def _resumo_taxas(grupo: pd.DataFrame, coluna_aplicada: str) -> str:
     pares = sorted({(pct(c), pct(a)) for c, a in zip(grupo["taxa_contratada"], grupo[coluna_aplicada],
                                                      strict=True)})
-    return ", ".join(f"contrato {c}% × cobrado {a}%" for c, a in pares[:4]) + (" …" if len(pares) > 4 else "")
+    return (", ".join(f"contrato {pct_br(c)} × cobrado {pct_br(a)}" for c, a in pares[:4])
+            + (" …" if len(pares) > 4 else ""))
 
 
 def pendencias_contestacao_orbe(
@@ -62,7 +63,7 @@ def pendencias_contestacao_orbe(
             "motivo": (
                 f"{nome_lojista(linhas_df[linhas_df['cnpj'] == cnpj])}: {len(grupo)} transações com taxa "
                 "diferente do contrato "
-                f"({_resumo_taxas(grupo, 'taxa_aplicada')}). Diferença líquida {total}, {sentido} "
+                f"({_resumo_taxas(grupo, 'taxa_aplicada')}). Diferença líquida {brl(total)}, {sentido} "
                 "(R1, R16.3, R28.1). "
                 f"{checkout_causa.texto_causa(grupo, linhas_df, causas, registry)} "
                 "Detalhe: linhas CK-DIV-* em divergencias_taxa."
@@ -121,8 +122,9 @@ def divergencias_condicao(
             "motivo": (
                 f"{nome_lojista(linhas_df[linhas_df['cnpj'] == cnpj])}: a Orbe cobrou a taxa da planilha em "
                 f"{len(grupo)} transações, "
-                f"mas vale condição comercial registrada fora dela ({fontes}). Devolver {total} ao lojista "
-                f"(o que a Orbe descontou de fato, R33, pela fórmula da divergência: {formula}), "
+                f"mas vale condição comercial registrada fora dela ({fontes}). Devolver {brl(total)} "
+                "ao lojista "
+                f"(o que a Orbe descontou de fato, R33, pela fórmula da divergência: {brl(formula)}), "
                 "sem cobrar da Orbe (R16.1, R22). Atualizar a planilha e avisar a Orbe. "
                 "Detalhe por transação: linhas CK-COND-* em divergencias_taxa."
             ),
@@ -158,9 +160,9 @@ def pendencias_sem_contrato(transacoes: list[pd.Series], competencia: str) -> tu
             "valor_brl": total,
             "motivo": (
                 f"{cadastro['nome']} (CNPJ {cadastro.get('cnpj') or 'não confirmado'}, EC {ec}) sem contrato "
-                f"vigente: {len(txs)} transações, bruto {bruto}, a Orbe cobrou {total}. Não fatura até o "
-                "Comercial confirmar a taxa. Ao confirmar, a taxa vale desde o início e as linhas entram no "
-                f"mês seguinte (R3, R18). Fonte do CNPJ: {cadastro['fonte']}."
+                f"vigente: {len(txs)} transações, bruto {brl(bruto)}, a Orbe cobrou {brl(total)}. "
+                "Não fatura até o Comercial confirmar a taxa. Ao confirmar, a taxa vale desde o início e "
+                f"as linhas entram no mês seguinte (R3, R18). Fonte do CNPJ: {cadastro['fonte']}."
             ),
             "quem_decide": "Comercial",
         })
@@ -225,7 +227,8 @@ def alertas_antecipacao(
             "motivo": (
                 f"{txs['nome_estabelecimento'].iloc[0]} (EC {ec}) sem histórico (primeira movimentação "
                 f"em {txs['data_movimento'].min():%d/%m}) antecipou mais do que vendeu: em {data:%d/%m}, "
-                f"{antecipado} antecipados × {vendido} vendidos no mês. Total antecipado no mês {total}. "
+                f"{brl(antecipado)} antecipados × {brl(vendido)} vendidos no mês. Total antecipado no mês "
+                f"{brl(total)}. "
                 f"Reversões depois: {rev_txt}. Alerta para o Financeiro e o Comercial (R16.6, R28.2, R32)."
             ),
             "quem_decide": "Financeiro + Comercial",

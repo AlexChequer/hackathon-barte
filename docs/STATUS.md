@@ -11,7 +11,7 @@ Comece aqui. **Falta para fechar: `docs/FECHAMENTO_FINAL.md`.** **Painel:** `pyt
 | | + divergências de taxa, transação por transação | ✅ 233 linhas: `CK-DIV` (Orbe errou, R$ 1.576,23), `CK-COND` (Casa, concessão fora do contrato), `RM-DIV` (Mundo Aberto, R$ 1.418,85) |
 | | + notas a emitir | ✅ 20 checkout + 1 Ponte; ≤ 0 sem nota e com pendência |
 | | + lançamentos classificados no plano de contas | ✅ 184/184 por regra, contrapartida (R9), só contas analíticas |
-| **Extra** | + pendências com motivo e quem decide | ✅ 14 pendências agregadas por contraparte e lojista (R24.1), cada uma com motivo, fonte (R#) e dono |
+| **Extra** | + pendências com motivo e quem decide | ✅ 16 pendências agregadas por contraparte e lojista (R24.1), cada uma com motivo, fonte (R#), dono e **próximo passo** (coluna `proximo_passo`, P29), valores em pt-BR no texto (P30) |
 | | + rastro completo | ✅ soma exata por `id_saida` + cobertura (toda linha de entrada aparece em alguma saída) + toda linha do rastro aponta uma linha que existe no arquivo (P28) + cada fonte fecha contra o próprio total em `controle_fechamento.json` (Orbe, Ponte, Aurora, Meridiano) |
 | | + roda em outubro sem retrabalho | ⚠️ nada fixo de setembro, competência inferida, condições comerciais e sinais versionados. **Falta:** arquivo ausente e layout novo (R34), Atlas confirmada depois (R18), ajuste da Ponte (R27) |
 | **Entrega** | `saida/` com os 6 CSVs | ❌ **bloqueia**: hoje ficam em `saida/2026-09/exec_*` e `saida/` está no `.gitignore` (gap 1) |

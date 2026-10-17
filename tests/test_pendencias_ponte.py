@@ -8,6 +8,7 @@ import pytest
 
 from tarvo.engines import remessa as rm
 from tarvo.loaders import load_all
+from tarvo.money import brl
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "raw" / "set2026"
 MUNDO_ABERTO = "17217888000111"
@@ -63,7 +64,7 @@ def test_duplicata_vira_pendencia_para_corrigir_o_relatorio(res):
     assert list(pend["ref_origem"]) == ["PC-0926-0162"]
     linha = pend.iloc[0]
     assert linha["valor_brl"] == Decimal("821.88")  # o spread que o relatório conta a mais
-    assert "410.94" in linha["motivo"] and "L77" in linha["motivo"]
+    assert "R$ 410,94" in linha["motivo"] and "L77" in linha["motivo"]  # P30: pt-BR no texto
     rastro = _rastro(res, linha["id_saida"])
     assert list(rastro["ref_origem"]) == ["PC-0926-0162"] and sum(rastro["valor"]) == Decimal("821.88")
 
@@ -84,9 +85,9 @@ def test_negativo_traz_o_do_relatorio_e_a_diferenca_ate_o_contrato(res):
     pend = _pend(res, "SPREAD_NEGATIVO_CONTESTAR").set_index("ref_origem")
     linha = pend.loc["PC-0926-0210"]
     assert linha["valor_brl"] == Decimal("-687.52")  # o que aconteceu: valor do relatório
-    assert "-687.52" in linha["motivo"] and "-1351.87" in linha["motivo"]
+    assert "-R$ 687,52" in linha["motivo"] and "-R$ 1.351,87" in linha["motivo"]  # P30: pt-BR no texto
     assert "pedir à Ponte" in linha["motivo"]
-    assert "-637.91" in pend.loc["PC-0926-0545", "motivo"]  # contrato 1,4% (Novo Horizonte)
+    assert "-R$ 637,91" in pend.loc["PC-0926-0545", "motivo"]  # contrato 1,4% (Novo Horizonte)
 
 
 def test_sintetico_negativo_de_lojista_com_spread_negociado_usa_o_contrato_dele(fontes):
@@ -98,4 +99,4 @@ def test_sintetico_negativo_de_lojista_com_spread_negociado_usa_o_contrato_dele(
     res = rm.run(ponte, fontes["taxas"], "2026-09")
     linha = _pend(res, "SPREAD_NEGATIVO_CONTESTAR").set_index("ref_origem").loc[ponte.loc[alvo, "n_operacao"]]
     esperado = (Decimal("-0.022") * ptax * me).quantize(Decimal("0.01"), ROUND_HALF_UP)  # -1% − 1,2%
-    assert str(esperado) in linha["motivo"]
+    assert brl(esperado) in linha["motivo"]

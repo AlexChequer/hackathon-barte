@@ -23,7 +23,7 @@ from tarvo.engines.checkout_pendencias import (
     pendencias_contestacao_orbe,
     pendencias_sem_contrato,
 )
-from tarvo.money import ZERO, pct, q, q_mul, sum_q
+from tarvo.money import ZERO, brl, pct, pct_br, q, q_mul, sum_q
 
 ARQUIVO_ORBE = "orbe"
 ARQUIVO_TAXAS = "taxas"
@@ -509,8 +509,8 @@ def run(
                         "arquivo_origem": ARQUIVO_ORBE,
                         "valor_brl": ZERO,
                         "motivo": (
-                            f"Comissão de checkout de {lojista} em {competencia}"
-                            " fechou em 0 sem regra conhecida."
+                            f"Comissão de checkout de {lojista} em {_competencia_fmt(competencia)}"
+                            " fechou em R$ 0,00 sem regra conhecida (R4)."
                         ),
                         "quem_decide": "Financeiro",
                         "cnpj": cnpj,
@@ -529,8 +529,9 @@ def run(
                     "arquivo_origem": ARQUIVO_ORBE,
                     "valor_brl": total_comissao,
                     "motivo": (
-                        f"Comissão de {lojista} em {competencia} ficou negativa"
-                        f" ({total_comissao}). R4: Helena decide."
+                        f"Comissão de checkout de {lojista} em {_competencia_fmt(competencia)} ficou "
+                        f"negativa ({brl(total_comissao)}), e comissão negativa não emite nota (R4). "
+                        f"{_composicao_negativa(grupo)}"
                     ),
                     "quem_decide": "Financeiro",
                     "cnpj": cnpj,
@@ -596,6 +597,22 @@ def run(
     result.rastro = pd.DataFrame(rastro_rows)
     result.diagnosticos = diagnosticos
     return result
+
+
+def _composicao_negativa(grupo: pd.DataFrame) -> str:
+    """De onde vem o saldo negativo: as transações com comissão ≠ 0, maiores primeiro (até 5)."""
+    pesam = grupo[grupo["comissao"] != ZERO]
+    pesam = pesam.reindex(pesam["comissao"].map(abs).sort_values(ascending=False).index)
+    itens = []
+    for _, tx in pesam.head(5).iterrows():
+        data = tx["data_referencia"]
+        venda = f"venda de {data:%d/%m/%Y}, " if tx["tipo"] == "ESTORNO" and data else ""
+        taxa = pct_br(pct(tx["taxa_contratada"]))
+        itens.append(f"{tx['id_transacao']} ({tx['tipo'].lower()}, {venda}taxa {taxa}) {brl(tx['comissao'])}")
+    resto = f" e mais {len(pesam) - 5}" if len(pesam) > 5 else ""
+    isentas = len(grupo) - len(pesam)
+    zeradas = f" As outras {isentas} transações têm comissão R$ 0,00." if isentas else ""
+    return f"Vem de: {', '.join(itens)}{resto}.{zeradas}"
 
 
 def _rastro_por_transacao(grupo: pd.DataFrame, id_saida: str, metadata: str) -> list[dict]:

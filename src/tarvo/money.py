@@ -37,3 +37,24 @@ def pct(fraction: Decimal | None) -> Decimal | None:
     if fraction is None:
         return None
     return (fraction * Decimal("100")).quantize(Decimal("0.0001"))
+
+
+def brl(value: Decimal) -> str:
+    """Valor para texto lido por pessoas (motivo, próximo passo): Decimal('-1351.87') → '-R$ 1.351,87'.
+
+    Só para textos. As colunas numéricas dos CSVs continuam com ponto decimal (formato do case).
+    """
+    if not Decimal(value).is_finite():
+        return "valor indisponível"
+    v = q(value)
+    numero = f"{abs(v):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    return f"-R$ {numero}" if v < 0 else f"R$ {numero}"
+
+
+def pct_br(percentual: Decimal | None) -> str:
+    """Percentual para texto: Decimal('2.1900') → '2,19%', Decimal('1.4991') → '1,4991%' (mínimo 2 casas)."""
+    if percentual is None or not percentual.is_finite():
+        return "—"
+    texto = format(percentual.normalize(), "f")
+    inteiro, _, casas = texto.partition(".")
+    return f"{inteiro},{casas.ljust(2, '0')}%"

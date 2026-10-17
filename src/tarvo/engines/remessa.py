@@ -12,7 +12,7 @@ import pandas as pd
 
 from tarvo import rules
 from tarvo.engines import EngineResult
-from tarvo.money import ZERO, pct, q, q_mul, sum_q
+from tarvo.money import ZERO, brl, pct, pct_br, q, q_mul, sum_q
 
 ARQUIVO_PONTE = "ponte"
 ARQUIVO_TAXAS = "taxas"
@@ -184,7 +184,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "valor_brl": q(spread_brl),
                 "motivo": (
                     f"Spread negativo em {n_op} ({cliente}): fora da comissão e da nota (R5). "
-                    f"Valor do relatório (o que aconteceu): {q(spread_brl)}. "
+                    f"Valor do relatório (o que aconteceu): {brl(spread_brl)}. "
                     + _ate_o_contrato(spread_pct_valor, contratos.get(cnpj), ptax, valor_me)
                     + f"{f' Obs. da Ponte: {obs}.' if obs else ''}"
                 ),
@@ -256,7 +256,8 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     for cnpj, total, linhas in _divergencias_por_lojista(divergencias_rows):
         contesta_id = f"RM-CONTESTA-{competencia}-{cnpj}"
         pares = sorted({(linha["taxa_contratada_pct"], linha["taxa_aplicada_pct"]) for linha in linhas})
-        faixa = f"contrato {pares[0][0]}% × cobrado de {pares[0][1]}% a {pares[-1][1]}%"
+        faixa = (f"contrato {pct_br(pares[0][0])} × cobrado de {pct_br(pares[0][1])} "
+                 f"a {pct_br(pares[-1][1])}")
         pendencias.append({
             "id": contesta_id,
             "tipo": "CONTESTACAO_PONTE",
@@ -265,9 +266,9 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             "valor_brl": total,
             "motivo": (
                 f"{_nome_lojista(nomes_por_cnpj.get(cnpj, []))}: {len(linhas)} operações com spread acima do "
-                f"contratado ({faixa}), diferença cheia {total} (R7). Contestar com a Ponte com as operações "
-                "listadas no rastro. A nota de setembro sai pelo realizado. Se a Ponte devolver, a nossa "
-                "metade sai no mês do ajuste (R10, R12)."
+                f"contratado ({faixa}), diferença cheia {brl(total)} (R7). Contestar com a Ponte com as "
+                "operações listadas no rastro. A nota do mês sai pelo realizado. Se a Ponte devolver, a "
+                "nossa metade sai no mês do ajuste (R10, R12)."
             ),
             "quem_decide": "Financeiro",
             "cnpj": cnpj,
@@ -336,8 +337,8 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             valores = [c for _, motivo, c in contribuicoes if motivo == chave]
             if valores:
                 rotulo = singular if len(valores) == 1 else plural
-                partes.append(f"{len(valores)} {rotulo} ({sum_q(valores)})")
-        sobra = (f" Os {arredondamento} restantes são arredondamento por operação (R8), sem contestação."
+                partes.append(f"{len(valores)} {rotulo} ({brl(sum_q(valores))})")
+        sobra = (f" Os {brl(arredondamento)} restantes são arredondamento por operação (R8), sem contestação."
                  if arredondamento != ZERO else "")
         pendencias.append({
             "id": pend_id,
@@ -346,8 +347,9 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             "arquivo_origem": ARQUIVO_PONTE,
             "valor_brl": diferenca,
             "motivo": (
-                f"50% do spread declarado pela Ponte ({q(total_declarado)}) menos a nota ({total_nota}) "
-                f"dá {q(total_declarado) - total_nota}. Desse total, {diferenca} vêm de linhas do relatório "
+                f"50% do spread declarado pela Ponte ({brl(total_declarado)}) menos a nota "
+                f"({brl(total_nota)}) dá {brl(q(total_declarado) - total_nota)}. Desse total, "
+                f"{brl(diferenca)} vêm de linhas do relatório "
                 f"que não entram na nota: {', '.join(partes)} (R5, R12, P12).{sobra}"
             ),
             "quem_decide": "Financeiro",  # R11/R12: Helena decide; a Ponte só recebe a contestação
@@ -397,9 +399,12 @@ def _ate_o_contrato(spread_pct, contratado, ptax, valor_me) -> str:
     """R28.3: o que a Helena vai pedir à Ponte, porque a trava deveria ter sido honrada."""
     if None in (spread_pct, contratado, ptax, valor_me):
         return "Sem spread contratado ou dados da operação para calcular a diferença até o contrato."
-    diferenca = q((spread_pct - contratado) * ptax * valor_me)
-    return (f"Diferença até o spread do contrato ({pct(contratado)}% sobre a PTAX), o que pedir à Ponte: "
-            f"{diferenca} (R28.3).")
+    diferenca = (spread_pct - contratado) * ptax * valor_me
+    if not diferenca.is_finite():
+        return "Sem spread contratado ou dados da operação para calcular a diferença até o contrato."
+    diferenca = q(diferenca)
+    return (f"Diferença até o spread do contrato ({pct_br(pct(contratado))} sobre a PTAX), o que pedir à "
+            f"Ponte: {brl(diferenca)} (R28.3).")
 
 
 def _pendencia_duplicata(n_op: str, grupo: pd.DataFrame, competencia: str) -> dict:
@@ -415,8 +420,8 @@ def _pendencia_duplicata(n_op: str, grupo: pd.DataFrame, competencia: str) -> di
         "valor_brl": total,
         "motivo": (
             f"{n_op} ({grupo.iloc[0]['cliente']}) aparece {len(grupo)} vezes no relatório da Ponte "
-            f"({linhas}). No fechamento conta uma vez (R5). O relatório soma {total} de spread a mais, "
-            f"o que aumenta a nossa metade em {q(total * Decimal('0.5'))} no total da Ponte. "
+            f"({linhas}). No fechamento conta uma vez (R5). O relatório soma {brl(total)} de spread a mais, "
+            f"o que aumenta a nossa metade em {brl(total * Decimal('0.5'))} no total da Ponte. "
             "Pedir à Ponte que corrija o relatório (R12)."
         ),
         "quem_decide": "Financeiro",

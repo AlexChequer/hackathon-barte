@@ -23,6 +23,7 @@ import pandas as pd
 
 from tarvo import condicoes as cond_mod
 from tarvo import controle, frentes, output, persistencia, rules, sinais
+from tarvo import pendencias as pend_mod
 from tarvo.engines import EngineResult, checkout, extratos, remessa
 from tarvo.loaders import FILES, OPCIONAIS, load_disponiveis
 
@@ -176,9 +177,10 @@ def run_closing(
     divergencias = _mesclar([r_ck.divergencias, r_rm.divergencias])
     notas = _mesclar([r_ck.notas, r_rm.notas])
     lancamentos = r_ex.lancamentos
-    pendencias = _mesclar(
+    # P29: toda pendência sai com o próximo passo (R26: "motivo e próximo passo").
+    pendencias = pend_mod.com_proximo_passo(_mesclar(
         [r_ck.pendencias, r_rm.pendencias, r_ex.pendencias, r_sn.pendencias, r_bl.pendencias]
-    )
+    ))
     rastro = _rastro_com_arquivo_da_orbe(
         _mesclar([r_ck.rastro, r_rm.rastro, r_ex.rastro, r_sn.rastro, r_bl.rastro]), sources["orbe"]
     )

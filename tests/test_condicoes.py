@@ -117,7 +117,7 @@ def test_alerta_de_antecipacao_so_para_lojista_sem_historico(res):
     linha = alertas.iloc[0]
     assert linha["valor_brl"] == Decimal("235943.10")
     assert linha["quem_decide"] == "Financeiro + Comercial"
-    assert "179592.82" in linha["motivo"] and "55357.50" in linha["motivo"]
+    assert "R$ 179.592,82" in linha["motivo"] and "R$ 55.357,50" in linha["motivo"]  # P30: pt-BR no texto
     assert "AN88446030" in linha["motivo"]  # reversão citada
     rastro = res.rastro[res.rastro["id_saida"] == linha["id_saida"]]
     assert len(rastro) == 5 and sum(rastro["valor"]) == linha["valor_brl"]

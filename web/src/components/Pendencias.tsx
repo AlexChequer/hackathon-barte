@@ -89,6 +89,12 @@ export function Pendencias({ fechamento, sinais, aoRegistrarCondicao, aoResolver
                       >
                         <div className="pb-4 pl-8">
                           <p className="max-w-[72ch] text-sm leading-relaxed text-tinta-2">{p.motivo}</p>
+                          {p.proximo_passo && (
+                            <p className="mt-3 max-w-[72ch] border-l-2 border-decisao pl-3 text-sm leading-relaxed text-tinta">
+                              <span className="font-medium text-decisao-tinta">Próximo passo: </span>
+                              {p.proximo_passo}
+                            </p>
+                          )}
                           <p className="mt-2 font-mono text-xs text-tinta-3">{id}</p>
                           <Acoes
                             pendencia={p}

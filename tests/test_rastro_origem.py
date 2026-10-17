@@ -95,8 +95,8 @@ def test_diferenca_da_ponte_aponta_as_operacoes_fora_da_nota(fechamento):
         "PC-0926-0210": Decimal("-343.76"), "PC-0926-0326": Decimal("-254.61"),
         "PC-0926-0491": Decimal("-146.14"), "PC-0926-0545": Decimal("-172.52"),
     }
-    assert "-0.56 restantes são arredondamento por operação (R8)" in pend["motivo"]
-    assert "4 spreads negativos (-917.03)" in pend["motivo"] and ";" not in pend["motivo"]
+    assert "-R$ 0,56 restantes são arredondamento por operação (R8)" in pend["motivo"]
+    assert "4 spreads negativos (-R$ 917,03)" in pend["motivo"] and ";" not in pend["motivo"]
 
 
 def test_duplicata_conflitante_aponta_a_operacao_real(sources):

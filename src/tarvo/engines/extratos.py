@@ -14,7 +14,7 @@ import pandas as pd
 
 from tarvo import rules
 from tarvo.engines import EngineResult
-from tarvo.money import q
+from tarvo.money import brl, q
 
 CONFIANCA_REGRA = Decimal("1.00")
 CONFIANCA_PENDENTE = Decimal("0.00")
@@ -68,7 +68,9 @@ def _classifica_aurora(row: pd.Series) -> dict:
                     motivo="Devolução de PIX de repasse (R6, aguardar motivo com o lojista).",
                     pendencia={
                         "tipo": "DEVOLUCAO_LOJISTA_SEM_MOTIVO",
-                        "motivo": "Devolução PIX Mundo Aberto, motivo da devolução não identificado (R6).",
+                        "motivo": (f"Devolução de PIX de repasse da Mundo Aberto, {brl(row['valor'])} em "
+                                   f"{row['data']:%d/%m/%Y}, sem motivo informado. O repasse volta a ser "
+                                   "devido ao lojista (R6, P17)."),
                         "quem_decide": "Financeiro",
                     })
     # PIX RECEBIDO sem identificação (R6)
@@ -78,8 +80,9 @@ def _classifica_aurora(row: pd.Series) -> dict:
                     pendencia={
                         "tipo": "PIX_NAO_IDENTIFICADO",
                         "motivo": (
-                            "PIX recebido sem identificação: fica em créditos não"
-                            " identificados até alguém reconhecer."
+                            f"PIX recebido de {brl(row['valor'])} em {row['data']:%d/%m/%Y} sem identificação"
+                            f"{_pagador(desc)}. Não é receita até alguém reconhecer: fica em créditos não "
+                            "identificados (R6)."
                         ),
                         "quem_decide": "Financeiro",
                     })
@@ -87,6 +90,13 @@ def _classifica_aurora(row: pd.Series) -> dict:
     if "PIX ENVIADO" in desc:
         return _res(rules.CONTA_REPASSE_A_LOJISTA, motivo="PIX de repasse a lojista.")
     return _sem_regra(row)
+
+
+def _pagador(desc: str) -> str:
+    """CNPJ do pagador quando o extrato traz (14 dígitos na descrição), formatado."""
+    if m := re.search(r"\b(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})\b", desc):
+        return f" (CNPJ do pagador no extrato: {m[1]}.{m[2]}.{m[3]}/{m[4]}-{m[5]})"
+    return ""
 
 
 def _classifica_meridiano(row: pd.Series) -> dict:
@@ -268,8 +278,8 @@ def run(
         if row["ref_origem"] in em_transito:
             cls = {**cls, "pendencia": {
                 "tipo": "TRANSFERENCIA_EM_TRANSITO",
-                "motivo": (f"Saída de {q(-row['valor'])} para o Meridiano em {row['data']} sem chegada "
-                           "no extrato do Meridiano do mês. Mantém em trânsito (R6)."),
+                "motivo": (f"Saída de {brl(-row['valor'])} para o Meridiano em {row['data']:%d/%m/%Y} sem "
+                           "chegada no extrato do Meridiano do mês. Fica em trânsito (R6)."),
                 "quem_decide": "Financeiro",
             }}
         _emit("AURORA", row, cls)
