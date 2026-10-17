@@ -182,10 +182,10 @@ def run(
             "motivo": (
                 f"{s.lojista} ({s.cnpj}), planilha L{s.linha} ({s.campo}): \"{s.texto}\". "
                 f"Pode indicar condição comercial fora da planilha (detectado por {m.metodo}). "
-                "Confirmar se muda a taxa; se sim, informar taxa por modalidade, início e fim."
+                "Confirmar se muda a taxa. Se sim, informar taxa por modalidade, início e fim."
             ),
             "quem_decide": "Comercial",
         })
         rastro.append({"id_saida": pend_id, "arquivo_origem": "taxas", "ref_origem": f"L{s.linha}",
-                       "valor": Decimal("0.00"), "metadata": f"sinal_{s.campo};metodo={m.metodo}"})
+                       "valor": Decimal("0.00"), "metadata": f"sinal_{s.campo},metodo={m.metodo}"})
     return EngineResult(pendencias=pd.DataFrame(pendencias), rastro=pd.DataFrame(rastro))

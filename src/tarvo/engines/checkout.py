@@ -15,7 +15,7 @@ import pandas as pd
 
 from tarvo import condicoes as cond_mod
 from tarvo import rules
-from tarvo.engines import EngineResult
+from tarvo.engines import EngineResult, checkout_causa
 from tarvo.engines.checkout_pendencias import (
     alertas_antecipacao,
     divergencias_condicao,
@@ -155,6 +155,7 @@ class TaxaResolvida:
     contratada: Decimal | None
     planilha: Decimal | None
     condicao: cond_mod.Condicao | None
+    coluna: str | None = None  # produto da planilha (credito_vista, antecipacao, …)
 
 
 def _taxa_contratada(
@@ -168,7 +169,7 @@ def _taxa_contratada(
     planilha = getattr(entry, coluna) if coluna else None
     condicao = cond_mod.vigente(condicoes, entry.cnpj, data_regra, coluna) if coluna else None
     contratada = condicao.taxas[coluna] if condicao else planilha
-    return TaxaResolvida(contratada, planilha, condicao)
+    return TaxaResolvida(contratada, planilha, condicao, coluna)
 
 
 def _divergencias(bruto: Decimal, aplicada: Decimal | None, taxa: TaxaResolvida) -> tuple[Decimal, Decimal]:
@@ -220,8 +221,8 @@ def _dedup_orbe(
                     "arquivo_origem": ARQUIVO_ORBE,
                     "valor_brl": q(linha["valor_taxa"] or ZERO),
                     "motivo": (
-                        f"id_transacao {id_tx} aparece em linhas com dados financeiros divergentes;"
-                        " não escolhemos qual é a correta."
+                        f"id_transacao {id_tx} aparece em linhas com dados financeiros divergentes."
+                        " Não escolhemos qual é a correta."
                     ),
                     "quem_decide": "Financeiro",
                     "cnpj": None,
@@ -305,7 +306,7 @@ def run(
                 "valor_brl": q(tx["valor_taxa"] or ZERO),
                 "motivo": (
                     f"Transação {tx['id_transacao']} com data_movimento {data_tx} fora da "
-                    f"competência {competencia}; não entra na apuração do mês."
+                    f"competência {competencia}. Não entra na apuração do mês."
                 ),
                 "quem_decide": "Financeiro",
                 "cnpj": None,
@@ -391,6 +392,8 @@ def run(
                 "linha_planilha": entry.linha_planilha,
                 "contratada_fonte": "antecipacao_original",
                 "condicao_id": None,
+                "produto": taxa.coluna,
+                "data_referencia": data_regra,
             })
             continue
 
@@ -430,6 +433,8 @@ def run(
             "contratada_fonte": "condicao" if taxa.condicao else "planilha",
             "condicao_id": taxa.condicao.id if taxa.condicao else None,
             "valor_bruto": valor_bruto,
+            "produto": taxa.coluna,
+            "data_referencia": data_regra,
         })
 
         # Divergência não vira pendência: a linha em divergencias.csv já representa a decisão
@@ -463,7 +468,7 @@ def run(
                     "arquivo_origem": ARQUIVO_ORBE,
                     "ref_origem": tx["id_transacao"],
                     "valor": tx["comissao"],
-                    "metadata": f"tipo={tx['tipo']};taxa_contratada={pct(tx['taxa_contratada'])}",
+                    "metadata": f"tipo={tx['tipo']},taxa_contratada={pct(tx['taxa_contratada'])}",
                 })
 
             # Nota (R4/P11): só com saldo > 0. Saldo 0 por Casa isenta = sem nota sem pendência.
@@ -524,7 +529,8 @@ def run(
                     "ec": grupo["ec"].iloc[0],
                 }])], ignore_index=True)
 
-        # Divergências por transação (R1 + R8)
+        # Divergências por transação (R1 + R8), com a causa decidida por regra (P-causa)
+        causas = checkout_causa.classificar(linhas_df, registry)
         divergentes = linhas_df[linhas_df["divergencia"] != ZERO]
         for _, tx in divergentes.iterrows():
             div_id = f"CK-DIV-{tx['id_transacao']}"
@@ -536,6 +542,7 @@ def run(
                 "taxa_contratada_pct": pct(tx["taxa_contratada"]),
                 "taxa_aplicada_pct": pct(tx["taxa_aplicada"]),
                 "diferenca_brl": tx["divergencia"],
+                "causa_divergencia": causas[tx["id_transacao"]],
             })
             rastro_rows.append({
                 "id_saida": div_id,
@@ -548,7 +555,8 @@ def run(
         cond_rows, cond_rastro, cond_pend = divergencias_condicao(linhas_df, condicoes, competencia)
         divergencias_rows.extend(cond_rows)
         rastro_rows.extend(cond_rastro)
-        contest_rastro, contest_pend = pendencias_contestacao_orbe(linhas_df, competencia)
+        contest_rastro, contest_pend = pendencias_contestacao_orbe(
+            linhas_df, competencia, causas, registry)
         rastro_rows.extend(contest_rastro)
         pendencias_cond = cond_pend + contest_pend
     else:

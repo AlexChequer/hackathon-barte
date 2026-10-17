@@ -111,7 +111,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "valor_brl": q(spread_brl or ZERO),
                 "motivo": (
                     f"Operação {n_op} com data_contratacao {data_contratacao} fora da competência"
-                    f" {competencia}; não entra na apuração do mês."
+                    f" {competencia}. Não entra na apuração do mês."
                 ),
                 "quem_decide": "Financeiro",
                 "cnpj": cnpj,
@@ -126,8 +126,8 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "arquivo_origem": ARQUIVO_PONTE,
                 "valor_brl": ZERO,
                 "motivo": (
-                    f"Operação {n_op} ({cliente}) sem spread R$ no relatório da Ponte;"
-                    " não dá para apurar comissão sem o valor."
+                    f"Operação {n_op} ({cliente}) sem spread R$ no relatório da Ponte."
+                    " Não dá para apurar comissão sem o valor."
                 ),
                 "quem_decide": "Financeiro",  # R11/R12: Helena decide; a Ponte só recebe a contestação
                 "cnpj": cnpj,
@@ -192,7 +192,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "ref_origem": n_op,
                 "arquivo_origem": ARQUIVO_PONTE,
                 "valor_brl": ZERO,
-                "motivo": f"Spread remessa inválido para CNPJ {cnpj}; não resolvido como padrão.",
+                "motivo": f"Spread remessa inválido para CNPJ {cnpj}, não resolvido como padrão.",
                 "quem_decide": "Financeiro",
                 "cnpj": cnpj,
                 "linha_negocio": "REMESSA",

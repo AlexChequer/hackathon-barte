@@ -66,7 +66,7 @@ def _classifica_aurora(row: pd.Series) -> dict:
                     motivo="Devolução de PIX de repasse (R6, aguardar motivo com o lojista).",
                     pendencia={
                         "tipo": "DEVOLUCAO_LOJISTA_SEM_MOTIVO",
-                        "motivo": "Devolução PIX Mundo Aberto; motivo da devolução não identificado (R6).",
+                        "motivo": "Devolução PIX Mundo Aberto, motivo da devolução não identificado (R6).",
                         "quem_decide": "Financeiro",
                     })
     # PIX RECEBIDO sem identificação (R6)
@@ -238,7 +238,7 @@ def run(
             "arquivo_origem": banco.lower(),
             "ref_origem": ref,
             "valor": row["valor"],
-            "metadata": f"classificacao={conta or 'PENDENTE'};metodo={cls['metodo']}",
+            "metadata": f"classificacao={conta or 'PENDENTE'},metodo={cls['metodo']}",
         })
         pend = cls.get("pendencia")
         if pend:
