@@ -65,37 +65,36 @@ A comissão oficial é calculada pela taxa **contratada** (resposta R1), então 
 
 ## As dúvidas e por que importam
 
-### ✅ Base da comissão: respondida (R1)
-É a **contratada**: bruto × taxa da planilha, linha a linha, e a nota usa esse valor. Se a Orbe cobrou a mais, a diferença volta ao lojista e a Tarvo cobra da Orbe, **caso a caso, decidido pelo financeiro**. Consequências:
-- Os ~R$ 1.645 cobrados a mais da Rota Global não são receita. São devolução ao lojista, exatamente o caso da reclamação do mês passado.
-- Toda divergência também vira **pendência**, com transação, valor e "financeiro" como quem decide.
+Todas as decisões abaixo estão hoje em `HIPOTESES.md` (R1–R9, P1–P15). Esta seção explica o porquê de cada regra.
 
-### ✅ Estornos: respondida (R2, pergunta do time MN AI)
-O estorno abate a comissão do mês em que acontece, mesmo que a venda seja de agosto (agosto não reabre). A taxa é a **contratada na data da venda original**.
-- Em setembro, 9 dos 59 estornos são de vendas de agosto.
-- Isso também resolve parte da vigência da Bridge: um estorno de venda anterior a 15/09 usa 2,59%.
+### ✅ Base da comissão (R1, R8)
+Contratada: bruto × taxa da planilha, linha a linha, com `Decimal` e `ROUND_HALF_UP` por linha. Divergência existe quando a **taxa** aplicada é diferente da contratada; centavo de truncamento da Orbe não gera divergência. Divergência vira pendência; a decisão de devolver/cobrar é do financeiro e não altera o reconhecimento.
 
-### Rota Global: +0,5 p.p. a partir de 12/09
-- **O que se vê:** 83 vendas, R$ 329 mil de volume, ~R$ 1.645 cobrados a mais.
-- **Ponto fino:** a planilha foi atualizada em 02/09 e a mudança começa em 12/09. Ou o comercial renegociou e a planilha está desatualizada, ou a Orbe está com cadastro errado.
-- **Por que perguntar:** se for renegociação, apontar divergência seria **alarme falso**, que conta contra.
+### ✅ Estornos (R2)
+Entram na competência do estorno, com modalidade e taxa da data da venda original. Em setembro, 9 dos 59 estornos têm venda em agosto. Resolve também a vigência da Bridge (2,59% até 14/09 / 2,19% a partir de 15/09) e a isenção da Casa (estornos de venda de agosto usam a taxa histórica).
 
-### Os 4 ECs que não estão na planilha
-- **Tamanho:** 290 transações, R$ 1,1 mi de volume e R$ 35 mil em taxas, ou seja, **~15% da receita de checkout** sem contrato para conferir.
-- **A armadilha:** "Horizonte Viagens" (planilha), "HORIZONTE VIAGENS TURISMO" e "HORIZONTE INTERCAMBIO" (Orbe), mais "Novo Horizonte" (planilha). Casar por nome é exatamente o erro que as instruções citam.
-- **Por que perguntar:** sem o mapa EC → CNPJ, não dá para saber de quem é a comissão nem para quem vai a nota.
+### ✅ Rota Global (R6, P9)
+O contrato não mudou. O desvio está em **crédito** a partir de 12/09. Débito e Pix batem no histórico. O motor **compara por modalidade**: qualquer modalidade pode gerar divergência, não aplicamos reajuste automático em modalidade sem desvio.
 
-### Antecipação e reversão
-- **O que se vê:** 6 antecipações foram revertidas, somando −R$ 6.061.
-- **A dúvida:** a reversão cancela a receita inteira? E os 2,10% são fixos ou dependem do prazo? Se dependerem do prazo, falta um dado e isso vira pendência.
+### ✅ ECs faltando na planilha (R3, P10)
+Três têm linha correspondente na aba vigente: `1043300981`, `1043396662`, `1038867654`. **Atlas (1076801732) não tem contrato vigente** — ninguém sabe a taxa. O motor **não inventa taxa nem comissão zero fictícia**: deixa as 57 transações visíveis como pendência para o Comercial, com `valor_brl` representando a cobrança observada (exposição bruta).
 
-### Remessa (Ponte)
-- **Duplicada:** a operação PC-0926-0162 aparece 2× e o total da Ponte conta as duas. Se aceitarmos, faturamos R$ 411 a mais.
-- **Spreads negativos:** 4 operações com −R$ 1.834 no total. Aceitar significa que a Tarvo paga pela operação.
-- **Mundo Aberto:** negociou 1,2% e a Ponte cobrou ~1,5%.
-- **Nota da remessa:** o e-mail diz que o repasse sai "mediante nota fiscal de intermediação". Então a nota parece ser para a **Ponte**, não para os lojistas, e isso muda o arquivo de notas inteiro.
-- **Spread "padrão":** o valor não está escrito em lugar nenhum.
+### ✅ Antecipação e reversão (R4, P13)
+Antecipação usa a taxa contratada da antecipação do lojista (2,10% nos dados). Reversão **anula a comissão contratual arredondada da antecipação original**, localizada por `id_referencia`; não cobra pela taxa atual. Referência ausente/conflitante → pendência.
+
+### ✅ Remessa (R5, R7, P5, P7, P12, P14)
+- Duplicada PC-0926-0162 conta 1×, com evidência preservada.
+- Quatro negativos (0210, 0326, 0491, 0545) ficam fora da comissão/nota e abrem pendência de contestação (R5). Isso vale **para essas quatro operações**; não é regra automática para o futuro.
+- Participação = `round(spread_brl × 0,5)` **por operação**, somada por lojista; nota única para a Ponte Câmbio (75374179000146).
+- Divergência de spread: valor cheio por operação, (aplicado − contratado) × PTAX × valor ME. "Padrão"/vazio = 1,5%. Mundo Aberto = 1,20%. Texto inválido no campo não vira default silencioso.
+- Tolerância 0,01 p.p. (P7, critério do time, documentado com motivo). O relatório de avaliação mostra o somatório absoluto dos desvios suprimidos por lojista.
+
+### ✅ Casa do Estudante (R6, P6)
+Tarifa 0% entre 01/09 e 31/12. Durante a vigência não há comissão (nota não emitida). Estorno em setembro de venda de agosto usa a taxa histórica. Exemplo: `TX88445133` (estorno −369,39 em 07/09, venda 21/08, débito 1,49%) tem comissão −5,50 e **nenhuma** divergência.
+
+### ✅ Extratos (R6, R9)
+`conta_codigo` é a contrapartida, só contas que aceitam lançamento. Folha, tributos de 08 e repasse Ponte 08/2026 baixam passivo/recebível. Tarifas, aluguel, cloud, assinaturas, serviços entram direto na despesa de setembro. PIX L50 (7.350), devolução Mundo Aberto L65 (+12.400) e transferência de 300 mil 30/09 → 01/10 ficam pendentes com classificação de "não identificado"/"em trânsito".
 
 ## A lógica por trás de tudo
 
-O case avalia "**perguntar antes de construir**" (10%) e "**correção dos números**" (25%), e alarmes falsos contam contra. Cada dúvida acima é uma regra que, se a gente *chutar*, pode gerar um número errado com cara de certo. Onde não vier resposta, escrevemos a premissa em `HIPOTESES.md` e seguimos.
+O case avalia "perguntar antes de construir" (10%) e "correção dos números" (25%), e alarmes falsos contam contra. Onde não há resposta direta, registramos premissa fundamentada; onde falta informação para calcular, abrimos pendência e não faturamos. **Comissão contratada + divergência ≠ cobrança da Orbe** (truncamento), e **comissão mensal ≠ soma dos repasses no banco** (competência, elegibilidade). Cada saída fecha com o próprio rastro.

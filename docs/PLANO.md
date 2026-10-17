@@ -1,42 +1,53 @@
-# Plano do time
+# Plano técnico do MVP
 
-## Regra de ouro
-**Mínimo certo > extra errado.** Às 15h30, a comissão de checkout tem que estar fechando com rastro. Senão, todo mundo larga o que está fazendo e ajuda nisso.
+## Arquitetura
 
-## Entregáveis × níveis
+```
+data/raw/<competencia>/*  ──►  loaders/  ──►  dict de DataFrames normalizados
+                                              │
+                                              ▼
+                                       engines/  (checkout, remessa, extratos)
+                                              │
+                                              ▼
+                                       orquestrador.py (concatena, valida, deduplica rastro)
+                                              │
+                                      ┌───────┴────────┐
+                                      ▼                ▼
+                              output.write_output   persistencia.sqlite
+                                      │
+                                      ▼
+                              saida/<competencia>/*.csv (os 6)
+                              saida/<competencia>/avaliacao.json
+```
 
-| Nível | Entrega | Arquivo em `saida/` |
-|---|---|---|
-| Mínimo | Comissão de checkout por lojista, com rastro | `comissoes_por_lojista.csv`, `rastro.csv` |
-| Alvo | + comissão de remessa, divergências, notas, lançamentos classificados | `divergencias_taxa.csv`, `notas_a_emitir.csv`, `lancamentos_classificados.csv` |
-| Extra | + pendências explicadas, rastro completo, roda em outubro sem retrabalho | `pendencias.csv` |
+- CLI (`python -m tarvo`) e Streamlit (`src/tarvo/ui/app.py`) chamam o **mesmo orquestrador**. Zero duplicação de cálculo na interface.
+- Regras de negócio ficam em `src/tarvo/rules.py` (constantes: de-para R3, Casa R6, vigências, Mundo Aberto 1,20%, padrão 1,5%, 4 negativos de setembro).
+- `src/tarvo/money.py`: `Decimal` + `ROUND_HALF_UP` em utilitários (`q(valor)`, `q_rate_times_amount(bruto, taxa)`), para que todo lugar arredonde do mesmo jeito.
+- SQLite local em `saida/tarvo.sqlite` guarda:
+  - `execucoes`: competência, commit git, hashes dos arquivos, versão das regras (`rules.VERSION`), duração.
+  - `decisoes`: pendência afetada, responsável, momento, motivo, escopo (lojista/operação/transação), estado atual, hash dos dados de origem usados — reavaliar quando o hash muda.
+- Formato de saída preserva o schema existente. IDs têm prefixo por motor (CK-, RM-, EX-) e por tipo (CM-, DIV-, NT-, LC-, PN-).
 
-## Divisão sugerida (frentes independentes, juntam no `rastro.csv`)
+## Ordem de implementação
 
-| Frente | Dono | Escopo | Módulo |
-|---|---|---|---|
-| A. Checkout | Alex | Orbe × taxas: casar o EC, achar a taxa contratada e a vigência, calcular comissão e divergências | `src/tarvo/engines/checkout.py` |
-| B. Remessa | Helio | Ponte: duplicadas, spread negativo, spread contratado, comissão de 50%, notas | `src/tarvo/engines/remessa.py` |
-| C. Extratos + entrega | André | Classificar Aurora/Meridiano no plano (regra primeiro, IA só no resto), pendências, README, pitch | `src/tarvo/engines/extratos.py` |
+1. Reconciliação dos documentos de contexto (CLAUDE.md, HIPOTESES.md, STATUS.md, MAPA_DADOS.md, CONTEXTO.md, PERGUNTAS_FINANCEIRO.md, PLANO.md, README.md, AVALIACAO.md).
+2. `rules.py` + `money.py`.
+3. `engines/checkout.py` (comissões, divergências, notas, pendências, rastro).
+4. `engines/remessa.py` (dedup, exclusões, participação, divergência, nota única).
+5. `engines/extratos.py` (classificação por regra + pendências para casos descritos).
+6. `orquestrador.py` + `__main__.py` escrevem os 6 CSVs e validam rastro.
+7. `persistencia.py` (idempotência + decisões).
+8. `avaliacao.py` (métricas por lote de referência).
+9. `ui/app.py` (Streamlit fino).
+10. Testes dos casos críticos listados em `docs/AVALIACAO.md`.
 
-Quem fecha uma frente revisa os números da outra. **Ninguém aceita um número sem conferir uma amostra na mão.**
+## Virada de competência
 
-## Linha do tempo (17/10)
+- `--dados data/raw/out2026` basta: loaders localizam arquivos pelo padrão `set2026` → trocar sufixo (ver `src/tarvo/loaders/__init__.py`).
+- Vigências estão em `rules.py` por data. A isenção da Casa vale até 31/12/2026; estornos de agosto continuam com taxa histórica.
+- O conjunto de 4 negativos (P12) é da competência set/26 e **não se aplica** automaticamente a outubro.
+- A persistência marca a execução anterior como superada se o hash do data pack mudar.
 
-| Hora | Marco |
-|---|---|
-| 16/10, 20h30–22h30 | Mandar as perguntas P0/P1 no #tarvo-financeiro (`docs/PERGUNTAS_FINANCEIRO.md`) |
-| 8h | Credenciamento (pontualidade conta **por pessoa**) |
-| 9h30 | Construção. Repassar as respostas da noite para `HIPOTESES.md` |
-| **11h** | **Checkpoint 1** no thread: o que vamos atacar, hipóteses principais, o que fica de fora |
-| 13h | Mínimo pronto: `comissoes_por_lojista.csv` CHECKOUT + rastro batendo |
-| **15h30** | **Checkpoint 2**: o que funciona, o que mudou |
-| 17h | Congelar features. Só correção, README, MOMENTOS.md e export dos prompts |
-| 17h30 | Fim do atendimento do financeiro |
-| **18h15** | Último commit + push + checar se o repo está público. **Nada depois das 18h30** |
-| 18h30–19h | Pitch (PDF/slides) no #hackathon-entregas |
+## Não entra agora
 
-## Fluxo git
-- `main` sempre roda (`python -m tarvo` + `pytest`).
-- Branch por frente (`feat/checkout`, `feat/remessa`, `feat/extratos`), PR pequeno, merge rápido.
-- **Nunca** editar `data/raw/` (penalizado). Um teste garante que o loader lê o arquivo como ele vem.
+Jev, SLM, RAG, chatbot, microserviços, filas, autenticação, emissão fiscal real, movimentações bancárias.

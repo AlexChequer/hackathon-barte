@@ -1,6 +1,7 @@
-"""Escrita dos arquivos de saida/ no formato fixo exigido pelo case (correção automática).
+"""Escrita dos arquivos de saida/ no formato fixo exigido pelo case.
 
 CSV com ';', ponto decimal, datas AAAA-MM-DD, CNPJ só dígitos (14).
+Valida igualdade exata (centavos) entre o valor da saída e a soma do rastro.
 """
 
 from __future__ import annotations
@@ -32,27 +33,56 @@ def _fmt(value: object) -> object:
         return format(value, "f")
     if isinstance(value, (dt.date, dt.datetime)):
         return value.strftime("%Y-%m-%d")
+    if value is None:
+        return ""
     return value
 
 
 def write_output(df: pd.DataFrame, filename: str, out_dir: Path) -> Path:
-    """Valida colunas obrigatórias e escreve. Colunas extras são mantidas depois das obrigatórias."""
+    """Valida colunas obrigatórias e escreve. Colunas extras ficam depois das obrigatórias."""
     required = SCHEMAS[filename]
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"{filename}: faltam colunas obrigatórias {missing}")
-    extras = [c for c in df.columns if c not in required]
-    formatted = df[required + extras].map(_fmt)
+    if df.empty:
+        formatted = pd.DataFrame(columns=required)
+    else:
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            raise ValueError(f"{filename}: faltam colunas obrigatórias {missing}")
+        extras = [c for c in df.columns if c not in required]
+        formatted = df[required + extras].map(_fmt)
     out_dir.mkdir(parents=True, exist_ok=True)
     target = out_dir / filename
     formatted.to_csv(target, sep=";", index=False, encoding="utf-8")
     return target
 
 
-def check_rastro(reported: pd.DataFrame, value_col: str, rastro: pd.DataFrame,
-                 tolerance: Decimal = Decimal("0.01")) -> pd.DataFrame:
-    """Linhas de saída cujo valor não bate com a soma do rastro (deveria vir vazio)."""
+def check_rastro(reported: pd.DataFrame, value_col: str, rastro: pd.DataFrame) -> pd.DataFrame:
+    """Linhas de saída cuja soma do rastro não bate em centavos exatos.
+
+    Rejeita diferenças de 0.01 e saídas sem origem (inclusive quando valor = 0).
+    Reporta também id_saida inexistente no rastro.
+    """
+    if reported.empty:
+        return reported
     sums = rastro.groupby("id_saida")["valor"].apply(lambda s: sum(s, Decimal(0)))
     merged = reported.assign(soma_rastro=reported["id_saida"].map(sums))
-    gap = (merged[value_col] - merged["soma_rastro"].fillna(Decimal(0))).abs()
-    return merged[gap > tolerance]
+    merged["tem_rastro"] = reported["id_saida"].isin(set(rastro["id_saida"].unique()))
+    merged["esperado"] = reported[value_col].apply(lambda v: v if isinstance(v, Decimal) else Decimal(str(v)))
+    merged["bate"] = merged.apply(
+        lambda r: r["tem_rastro"] and r["soma_rastro"] == r["esperado"], axis=1
+    )
+    return merged[~merged["bate"]]
+
+
+def validate_rastro_integrity(rastro: pd.DataFrame, all_outputs_ids: set[str]) -> list[dict]:
+    """Checagens globais do rastro:
+    - id_saida em rastro deve existir em alguma saída.
+    - Várias linhas de rastro com o mesmo id_saida são permitidas, mas rastro em id inexistente é erro.
+    """
+    problemas: list[dict] = []
+    if rastro.empty:
+        return problemas
+    rastro_ids = set(rastro["id_saida"].unique())
+    orfaos = rastro_ids - all_outputs_ids
+    if orfaos:
+        problemas.append({"codigo": "RASTRO_ORFAO", "ids": sorted(orfaos)})
+    return problemas
