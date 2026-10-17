@@ -81,3 +81,83 @@ def carregar_sinais_resolvidos(caminho: Path = CAMINHO_PADRAO) -> tuple[SinalRes
         SinalResolvido(str(i["cnpj"]).zfill(14), i["texto"].strip(), i["decisao"], i["fonte"])
         for i in dados.get("sinais_resolvidos", [])
     )
+
+
+CAMPOS_OBRIGATORIOS = ("cnpj", "taxas", "inicio", "fonte", "aprovado_por")
+
+
+def _validar_condicao(dados: dict) -> dict:
+    """Valida na fronteira (tela/API). Taxas como fração em texto ("0.0199" = 1,99%)."""
+    faltando = [c for c in CAMPOS_OBRIGATORIOS if not dados.get(c)]
+    if "aprovado_por" in faltando:
+        raise ValueError("informe quem aprovou a condição (R20: taxa e condição comercial = Comercial)")
+    cnpj = "".join(ch for ch in str(dados.get("cnpj", "")) if ch.isdigit())
+    if len(cnpj) != 14:
+        raise ValueError(f"CNPJ precisa ter 14 dígitos (recebido: {dados.get('cnpj')!r})")
+    taxas = dados.get("taxas") or {}
+    if not taxas:
+        raise ValueError("informe ao menos uma taxa por modalidade")
+    desconhecidas = sorted(set(taxas) - set(COLUNAS_TAXA))
+    if desconhecidas:
+        raise ValueError(f"modalidade desconhecida: {desconhecidas}; use {list(COLUNAS_TAXA)}")
+    normalizadas = {}
+    for coluna, valor in taxas.items():
+        taxa = Decimal(str(valor))
+        if not Decimal("0") <= taxa < Decimal("1"):
+            raise ValueError(f"taxa de {coluna} precisa estar entre 0 e 1 como fração (0.0199 = 1,99%)")
+        normalizadas[coluna] = str(taxa)
+    inicio = dt.date.fromisoformat(str(dados["inicio"]))
+    fim = dt.date.fromisoformat(str(dados["fim"])) if dados.get("fim") else None
+    if fim is not None and fim < inicio:
+        raise ValueError("a data de fim não pode ser anterior ao início")
+    if faltando:
+        raise ValueError(f"campos obrigatórios faltando: {faltando}")
+    return {
+        "cnpj": cnpj,
+        "lojista": dados.get("lojista", ""),
+        "taxas": normalizadas,
+        "inicio": inicio.isoformat(),
+        "fim": fim.isoformat() if fim else None,
+        "descricao": dados.get("descricao", ""),
+        "fonte": dados["fonte"],
+        "aprovado_por": dados["aprovado_por"],
+        "registrado_por": dados.get("registrado_por") or "tela",
+        "registrado_em": dt.date.today().isoformat(),
+    }
+
+
+def _ler_arquivo(caminho: Path) -> dict:
+    if not caminho.exists():
+        return {"condicoes": [], "sinais_resolvidos": []}
+    return json.loads(caminho.read_text(encoding="utf-8"))
+
+
+def _gravar_arquivo(caminho: Path, dados: dict) -> None:
+    temporario = caminho.with_suffix(".tmp")
+    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporario.replace(caminho)  # troca atômica: nunca deixa o arquivo pela metade
+
+
+def registrar_condicao(caminho: Path, dados: dict) -> dict:
+    """Acrescenta uma condição validada (não altera as existentes) e devolve o registro gravado."""
+    nova = _validar_condicao(dados)
+    atual = _ler_arquivo(caminho)
+    existentes = atual.get("condicoes", [])
+    numero = max((int(c["id"].split("-")[1]) for c in existentes), default=0) + 1
+    registro = {"id": f"COND-{numero:04d}", **nova}
+    _gravar_arquivo(caminho, {**atual, "condicoes": [*existentes, registro]})
+    return registro
+
+
+def registrar_sinal_resolvido(caminho: Path, dados: dict) -> dict:
+    """Marca um texto da planilha como já analisado (não muda taxa) para não voltar como pendência."""
+    cnpj = "".join(ch for ch in str(dados.get("cnpj", "")) if ch.isdigit())
+    texto = str(dados.get("texto", "")).strip()
+    if len(cnpj) != 14 or not texto or not dados.get("fonte"):
+        raise ValueError("informe CNPJ (14 dígitos), o texto da planilha e a fonte da decisão")
+    registro = {"cnpj": cnpj, "texto": texto, "decisao": dados.get("decisao") or "nao_muda_taxa",
+                "fonte": dados["fonte"], "registrado_por": dados.get("registrado_por") or "tela",
+                "registrado_em": dt.date.today().isoformat()}
+    atual = _ler_arquivo(caminho)
+    _gravar_arquivo(caminho, {**atual, "sinais_resolvidos": [*atual.get("sinais_resolvidos", []), registro]})
+    return registro

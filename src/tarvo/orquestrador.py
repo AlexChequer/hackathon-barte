@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from tarvo import condicoes as cond_mod
 from tarvo import output, persistencia, rules, sinais
 from tarvo.engines import checkout, extratos, remessa
 from tarvo.loaders import FILES, OPCIONAIS, load_all
@@ -94,7 +95,9 @@ def _rastro_com_arquivo_da_orbe(rastro: pd.DataFrame, orbe: pd.DataFrame) -> pd.
     return rastro.assign(arquivo_origem=rastro["arquivo_origem"].where(~da_orbe | novo.isna(), novo))
 
 
-def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> ClosingResult:
+def run_closing(
+    dados: Path, saida: Path, competencia: str | None = None, condicoes_path: Path | None = None
+) -> ClosingResult:
     t0 = time.perf_counter()
     sources = load_all(dados)
     t_load = time.perf_counter() - t0
@@ -110,7 +113,9 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
     commit = _git_commit(dados.parent.parent)
 
     t = time.perf_counter()
-    r_ck = checkout.run(sources["orbe"], sources["taxas"], competencia)
+    caminho_condicoes = condicoes_path or cond_mod.CAMINHO_PADRAO
+    condicoes = cond_mod.carregar(caminho_condicoes)
+    r_ck = checkout.run(sources["orbe"], sources["taxas"], competencia, condicoes)
     t_ck = time.perf_counter() - t
 
     t = time.perf_counter()
@@ -122,7 +127,8 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
     t_ex = time.perf_counter() - t
 
     t = time.perf_counter()
-    r_sn = sinais.run(sources["taxas"], competencia, sinais.classificador_padrao())
+    r_sn = sinais.run(sources["taxas"], competencia, sinais.classificador_padrao(), condicoes,
+                      cond_mod.carregar_sinais_resolvidos(caminho_condicoes))
     t_sn = time.perf_counter() - t
 
     comissoes = _mesclar([r_ck.comissoes, r_rm.comissoes])
