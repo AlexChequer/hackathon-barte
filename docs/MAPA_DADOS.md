@@ -20,7 +20,7 @@ O que é *interpretação* está marcado como **hipótese** e precisa ir para `H
 - ANTECIPACAO (`AN…`) não tem modalidade nem bandeira. Taxa aplicada 2,10%.
 - **Mesmo EC com nomes diferentes**: `Mundo Aberto` / `MUNDO ABERTO INTERCAMBIO`, `EDU ABROAD CONSULTORIA` / `EDUABROAD`, `BEM-VINDO` / `BEM VINDO`… → casar por **EC**, nunca por nome.
 - ECs na Orbe que **não estão** na planilha de taxas (linhas sem EC): `1043300981 HORIZONTE INTERCAMBIO`, `1043396662 HORIZONTE VIAGENS TURISMO`, `1076801732 ATLAS IDIOMAS`, `1038867654 KIWI EXPERIENCE`.
-  - **Resolvido (R3):** `1043300981` → Novo Horizonte Intercâmbio (66564512000199); `1043396662` → Horizonte Viagens (78576234000179); `1038867654` → Kiwi Experience (07752116000126). `1076801732` Atlas **não fatura** até o Comercial confirmar: vira pendência por transação. No código: `src/tarvo/rules.py` (`EC_PARA_LINHA`, `EC_SEM_CONTRATO`).
+  - **Resolvido (R3):** `1043300981` → Novo Horizonte Intercâmbio (66564512000199); `1043396662` → Horizonte Viagens (78576234000179); `1038867654` → Kiwi Experience (07752116000126). `1076801732` Atlas **não fatura** até o Comercial confirmar: vira pendência por transação. No código: `src/tarvo/rules.py` (`EC_PARA_CNPJ`, `EC_SEM_CONTRATO`).
 - Três resolvidos por R3 via de-para explícito: Novo Horizonte, Horizonte Viagens e Kiwi têm CNPJ e taxas nas respectivas linhas da aba vigente. **Atlas segue sem contrato vigente** (P10): o motor não fatura, não emite nota, não inventa taxa.
 - Esses 4 ECs somam **290 transações** (Kiwi 85, Horizonte Intercâmbio 73, Horizonte Viagens Turismo 75, Atlas 57).
 - Comparação exploratória entre a taxa aplicada e a contratada por EC + modalidade, **sem considerar a vigência**:

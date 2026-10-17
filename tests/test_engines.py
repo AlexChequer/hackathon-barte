@@ -21,6 +21,8 @@ CASA_CNPJ = "00520815000100"
 BRIDGE_CNPJ = "22224579000109"
 ROTA_CNPJ = "95927868000148"
 ATLAS_EC = "1076801732"
+# Fato do data pack de set/2026 (F2): as 4 operações com spread negativo.
+NEGATIVOS_SET2026 = {"PC-0926-0210", "PC-0926-0326", "PC-0926-0491", "PC-0926-0545"}
 
 
 @pytest.fixture(scope="module")
@@ -115,9 +117,9 @@ def test_ponte_nota_total_equals_sum_of_participacoes(res_remessa):
 def test_four_negative_operations_are_excluded(res_remessa):
     pend = res_remessa.pendencias
     negs = pend[pend["tipo"] == "SPREAD_NEGATIVO_CONTESTAR"]
-    assert set(negs["ref_origem"]) == rules.PONTE_NEGATIVOS_EXCLUIR_SET2026
+    assert set(negs["ref_origem"]) == NEGATIVOS_SET2026
     # Nenhuma participação de comissão para esses negativos.
-    assert not any(ref in rules.PONTE_NEGATIVOS_EXCLUIR_SET2026
+    assert not any(ref in NEGATIVOS_SET2026
                    for ref in res_remessa.rastro["ref_origem"]
                    if res_remessa.rastro.loc[res_remessa.rastro["ref_origem"] == ref,
                                              "metadata"].iloc[0] == "participacao_remessa")
@@ -213,3 +215,44 @@ def test_decisao_marcada_reavaliar_quando_rules_mudam(tmp_path):
     assert len(decisoes) == 1
     assert decisoes[0]["precisa_reavaliar"] == 1
     assert "rules_version_mudou" in decisoes[0]["motivo_reavaliar"]
+
+
+def test_ec_r3_resolvido_por_cnpj_mesmo_se_nome_mudar(sources):
+    """R3: o de-para é EC → CNPJ. Renomear o lojista na planilha não pode quebrar o vínculo."""
+    taxas = sources["taxas"].assign(lojista=lambda df: df["lojista"] + " (renomeado)")
+    registry = ck.build_taxas_registry(taxas)
+    for ec, cnpj in rules.EC_PARA_CNPJ.items():
+        assert {e.cnpj for e in registry[ec]} == {cnpj}
+
+
+def test_transferencia_sem_chegada_no_outro_banco_fica_em_transito_em_qualquer_data(sources):
+    """Sem data fixa: a L92 fica em trânsito porque não tem TED de mesma titularidade no Meridiano."""
+    aurora = sources["aurora"].assign(data=lambda df: df["data"].map(lambda d: d.replace(year=2027)))
+    meridiano = sources["meridiano"].assign(data=lambda df: df["data"].map(lambda d: d.replace(year=2027)))
+    res = ex.run(aurora, meridiano, sources["plano"], "2027-09")
+    transito = res.pendencias[res.pendencias["tipo"] == "TRANSFERENCIA_EM_TRANSITO"]
+    assert list(transito["ref_origem"]) == ["L92"]
+
+
+def test_spread_negativo_fica_fora_em_qualquer_competencia(sources):
+    """R5: spread negativo não é aceito. Não depende de lista fixa de ids nem do mês."""
+    res = rm.run(sources["ponte"], sources["taxas"], "2027-09")
+    neg = res.pendencias[res.pendencias["tipo"] == "SPREAD_NEGATIVO_CONTESTAR"]
+    assert len(neg) == 4
+    assert set(neg["quem_decide"]) == {"Financeiro"}
+    assert res.notas["valor_brl"].sum() == Decimal("39543.45")
+
+
+def test_competencia_inferida_dos_dados(sources):
+    from tarvo.orquestrador import inferir_competencia
+    assert inferir_competencia(sources) == "2026-09"
+
+
+def test_repasse_da_ponte_de_mes_anterior_baixa_recebivel_em_qualquer_mes():
+    """R6/R9: repasse de comissão de mês anterior baixa o recebível; não depende de '08/2026' fixo."""
+    import datetime as dt
+
+    import pandas as pd
+    row = pd.Series({"descricao": "TED RECEB PONTE CAMBIO SA REPASSE COMISSAO 09/2026",
+                     "data": dt.date(2026, 10, 6), "valor": Decimal("39543.45")})
+    assert ex._classifica_meridiano(row)["conta_codigo"] == rules.CONTA_BAIXA_PASSIVO["repasse_ponte"]

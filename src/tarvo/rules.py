@@ -9,14 +9,14 @@ from __future__ import annotations
 import datetime as dt
 from decimal import Decimal
 
-VERSION = "2026-10-17.1"
+VERSION = "2026-10-17.2"
 
-# R3: de-para EC Orbe → linha da planilha vigente (lojista textual).
-# A taxa/CNPJ vem da respectiva linha da aba vigente, obtida em runtime.
-EC_PARA_LINHA = {
-    "1043300981": "Novo Horizonte Intercambio",
-    "1043396662": "Horizonte Viagens",
-    "1038867654": "Kiwi Experience",
+# R3: de-para EC Orbe → CNPJ, confirmado pela Helena. Taxas e vigências vêm das
+# linhas da planilha com esse CNPJ (em runtime); o nome do lojista não é usado.
+EC_PARA_CNPJ = {
+    "1043300981": "66564512000199",  # Novo Horizonte Intercâmbio
+    "1043396662": "78576234000179",  # Horizonte Viagens e Turismo
+    "1038867654": "07752116000126",  # Kiwi Experience
 }
 
 # R3 + P10: Atlas (1076801732) não tem contrato vigente.
@@ -30,10 +30,6 @@ CASA_ESTUDANTE_FIM = dt.date(2026, 12, 31)
 
 # R5: Ponte Câmbio – spread padrão (vazio ou texto "padrão" na planilha) = 1,5%.
 SPREAD_PADRAO = Decimal("0.015")
-
-# R5 + P12: as 4 operações negativas de setembro ficam fora da comissão/nota (contestação).
-# Não é regra automática para competências futuras.
-PONTE_NEGATIVOS_EXCLUIR_SET2026 = {"PC-0926-0210", "PC-0926-0326", "PC-0926-0491", "PC-0926-0545"}
 
 # R4: tomador da nota de remessa é a Ponte Câmbio.
 PONTE_CNPJ = "75374179000146"
@@ -54,7 +50,7 @@ CONTA_DESPESAS_DIRETAS = {
     "iof": "4.3.01",
 }
 
-# R6: baixa de passivos/recebível (competências de agosto já provisionadas).
+# R6/R9: baixa de passivos/recebível de competências anteriores já provisionadas.
 CONTA_BAIXA_PASSIVO = {
     "folha": "2.1.04.001",
     "inss": "2.1.04.002",
@@ -63,7 +59,7 @@ CONTA_BAIXA_PASSIVO = {
     "pis": "2.1.03.001",
     "cofins": "2.1.03.002",
     "irrf": "2.1.03.004",
-    "repasse_ponte_08": "1.1.03.002",
+    "repasse_ponte": "1.1.03.002",
 }
 
 # Classificações por natureza de movimento (regra determinística).

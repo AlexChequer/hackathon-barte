@@ -1,4 +1,4 @@
-"""CLI: python -m tarvo --dados data/raw/set2026 --saida saida
+"""CLI: python -m tarvo --dados <pasta do mês> --saida saida [--competencia AAAA-MM]
 
 Roda o fechamento completo e grava `comissoes_por_lojista.csv`, `divergencias_taxa.csv`,
 `notas_a_emitir.csv`, `lancamentos_classificados.csv`, `pendencias.csv` e `rastro.csv`
@@ -20,9 +20,11 @@ log = logging.getLogger("tarvo")
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tarvo", description="Fechamento mensal Tarvo")
-    parser.add_argument("--dados", type=Path, default=Path("data/raw/set2026"))
+    parser.add_argument("--dados", type=Path, required=True,
+                        help="pasta com os arquivos do mês (Orbe, taxas, Ponte, plano, Aurora, Meridiano)")
     parser.add_argument("--saida", type=Path, default=Path("saida"))
-    parser.add_argument("--competencia", default="2026-09", help="AAAA-MM")
+    parser.add_argument("--competencia", default=None,
+                        help="AAAA-MM; se omitido, é inferida das datas da Orbe e da Ponte")
     parser.add_argument(
         "--fixtures", type=Path, default=Path("tests/fixtures"),
         help="diretório com `referencia_<competencia>.json` para avaliar a saída",
@@ -54,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     rel = avaliar_e_persistir(resultado, fixtures_dir=args.fixtures, saida=args.saida)
     if rel is None:
         log.info("sem referência em %s para %s; avaliação não executada",
-                 args.fixtures, args.competencia)
+                 args.fixtures, resultado.competencia)
     else:
         resumo = rel["resumo"]
         log.info("avaliação: %d/%d casos de referência OK; classificação %d/%d",
