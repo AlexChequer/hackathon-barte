@@ -1,7 +1,7 @@
 """Causa da divergência de checkout, por transação (coluna extra `causa_divergencia`).
 
 Diz POR QUE a taxa cobrada pela Orbe diferiu do contrato, para prevenir no mês seguinte.
-Decidida só por regra sobre os dados do mês (ver HIPOTESES.md, P-causa):
+Decidida só por regra sobre os dados do mês (ver HIPOTESES.md, P26):
 
 1. `CK-COND-*` (condição comercial fora da planilha) → COND, já identificada pelo motor.
 2. Degrau sistêmico, por (CNPJ, produto): todos os desvios com o mesmo delta sobre a planilha e

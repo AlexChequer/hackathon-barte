@@ -12,7 +12,7 @@ Comece aqui. **Painel:** `python -m tarvo.web --dados data/raw/set2026`. Compara
 | | + notas a emitir | ✅ 20 checkout + 1 Ponte; ≤ 0 sem nota e com pendência |
 | | + lançamentos classificados no plano de contas | ✅ 184/184 por regra, contrapartida (R9), só contas analíticas |
 | **Extra** | + pendências com motivo e quem decide | ✅ 14 pendências agregadas por contraparte e lojista (R24.1), cada uma com motivo, fonte (R#) e dono |
-| | + rastro completo | ✅ soma exata por `id_saida` + cobertura (toda linha de entrada aparece em alguma saída) |
+| | + rastro completo | ✅ soma exata por `id_saida` + cobertura (toda linha de entrada aparece em alguma saída) + toda linha do rastro aponta uma linha que existe no arquivo (P28) + cada fonte fecha contra o próprio total em `controle_fechamento.json` (Orbe, Ponte, Aurora, Meridiano) |
 | | + roda em outubro sem retrabalho | ⚠️ nada fixo de setembro, competência inferida, condições comerciais e sinais versionados. **Falta:** arquivo ausente e layout novo (R34), Atlas confirmada depois (R18), ajuste da Ponte (R27) |
 | **Entrega** | `saida/` com os 6 CSVs | ❌ **bloqueia**: hoje ficam em `saida/2026-09/exec_*` e `saida/` está no `.gitignore` (gap 1) |
 | | README que diz como rodar | ❌ **bloqueia** (gap 2) |

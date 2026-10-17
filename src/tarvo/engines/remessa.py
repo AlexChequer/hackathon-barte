@@ -17,6 +17,15 @@ from tarvo.money import ZERO, pct, q, q_mul, sum_q
 ARQUIVO_PONTE = "ponte"
 ARQUIVO_TAXAS = "taxas"
 
+# Por que uma linha do relatório da Ponte não entra na nota (rastro da RM-CONTEST, P27).
+FORA_DA_NOTA = {
+    "duplicata": ("linha repetida contada 1×", "linhas repetidas contadas 1×"),
+    "conflito": ("duplicata conflitante", "duplicatas conflitantes"),
+    "fora_competencia": ("operação fora da competência", "operações fora da competência"),
+    "status": ("status de compliance não previsto", "status de compliance não previstos"),
+    "negativo": ("spread negativo", "spreads negativos"),
+}
+
 
 def _spread_contratado(taxas: pd.DataFrame) -> dict[str, Decimal]:
     """CNPJ → spread contratado. Vazio/'padrão' resolvido = 1,5% (R5). Texto inválido fica None."""
@@ -56,6 +65,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     deduped: list[pd.Series] = []
     duplicados_resolvidos: list[dict] = []
     pendencias: list[dict] = []
+    fora_da_nota: list[tuple[pd.Series, str]] = []  # (linha do relatório, motivo) que a nota não soma
     for n_op, grupo in ponte.groupby("n_operacao", sort=False):
         if len(grupo) == 1:
             deduped.append(grupo.iloc[0])
@@ -67,6 +77,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             primeira = grupo.iloc[0]
             deduped.append(primeira)
             for _, extra in grupo.iloc[1:].iterrows():
+                fora_da_nota.append((extra, "duplicata"))
                 duplicados_resolvidos.append({
                     "n_operacao": n_op,
                     "linha_origem": int(extra["linha_origem"]),
@@ -75,10 +86,12 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
         else:
             # Conflito financeiro: não escolhe sozinho, abre pendência.
             for _, linha in grupo.iterrows():
+                fora_da_nota.append((linha, "conflito"))
                 pendencias.append({
                     "id": f"RM-DUPCONF-{n_op}-{int(linha['linha_origem'])}",
                     "tipo": "DUPLICATA_CONFLITANTE",
                     "ref_origem": f"{n_op}#L{int(linha['linha_origem'])}",
+                    "ref_rastro": n_op,  # o rastro aponta a operação; a linha física vai na metadata
                     "arquivo_origem": ARQUIVO_PONTE,
                     "valor_brl": q(linha["spread_brl"] or ZERO),
                     "motivo": f"{n_op} aparece com dados financeiros divergentes entre linhas.",
@@ -103,6 +116,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
         data_contratacao = op.get("data_contratacao")
         spread_brl = op["spread_brl"]
         if not _dentro_competencia(data_contratacao, competencia):
+            fora_da_nota.append((op, "fora_competencia"))
             pendencias.append({
                 "id": f"RM-FORA-{n_op}",
                 "tipo": "FORA_COMPETENCIA",
@@ -141,6 +155,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
 
         # Status compliance: ambos entram (R5). Qualquer outro status desconhecido → pendência técnica.
         if status not in rules.PONTE_STATUS_VALIDOS:
+            fora_da_nota.append((op, "status"))
             pendencias.append({
                 "id": f"RM-STATUS-{n_op}",
                 "tipo": "STATUS_DESCONHECIDO",
@@ -158,6 +173,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
         # e vira pendência de contestação com o valor cheio da operação (R12). Quem decide
         # é a Helena; a Ponte é a destinatária da contestação (R11, R12).
         if spread_brl < 0:
+            fora_da_nota.append((op, "negativo"))
             obs = op.get("observacao") or ""
             pendencias.append({
                 "id": f"RM-NEG-{n_op}",
@@ -266,35 +282,65 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "metadata": "nota_remessa",
             })
 
-    # 5) Comparação contra o relatório declarado da Ponte (P14): se material, abre pendência.
+    # 5) Nota × 50% do declarado pela Ponte (P14, P27). A diferença vem das linhas do relatório
+    #    que a nota não soma; cada uma entra no rastro com a participação que teria (R8). O que
+    #    sobra é arredondamento por operação: vai no motivo, não é contestável nem tem linha.
     total_declarado = sum_q([v for v in ponte["spread_brl"].tolist() if v is not None]) * Decimal("0.5")
-    diferenca_relatorio = q(total_declarado) - total_nota
-    if abs(diferenca_relatorio) > Decimal("0.01"):
+    contribuicoes = [(linha, motivo, q_mul(linha["spread_brl"], Decimal("0.5")))
+                     for linha, motivo in fora_da_nota if linha["spread_brl"] is not None]
+    diferenca = sum_q(c for _, _, c in contribuicoes)
+    arredondamento = q(total_declarado) - total_nota - diferenca
+    pend_id = f"RM-CONTEST-{competencia}"
+    if diferenca != ZERO:
+        partes = []
+        for chave, (singular, plural) in FORA_DA_NOTA.items():
+            valores = [c for _, motivo, c in contribuicoes if motivo == chave]
+            if valores:
+                rotulo = singular if len(valores) == 1 else plural
+                partes.append(f"{len(valores)} {rotulo} ({sum_q(valores)})")
+        sobra = (f" Os {arredondamento} restantes são arredondamento por operação (R8), sem contestação."
+                 if arredondamento != ZERO else "")
         pendencias.append({
-            "id": f"RM-CONTEST-{competencia}",
+            "id": pend_id,
             "tipo": "DIFERENCA_RELATORIO_PONTE",
             "ref_origem": "relatorio_ponte",
             "arquivo_origem": ARQUIVO_PONTE,
-            "valor_brl": diferenca_relatorio,
+            "valor_brl": diferenca,
             "motivo": (
-                f"50% do spread total declarado pela Ponte ({q(total_declarado)}) ≠ "
-                f"nota ({total_nota}). Fontes da diferença: duplicatas resolvidas em 1× "
-                "e os 4 negativos excluídos (R5/P12)."
+                f"50% do spread declarado pela Ponte ({q(total_declarado)}) menos a nota ({total_nota}) "
+                f"dá {q(total_declarado) - total_nota}. Desse total, {diferenca} vêm de linhas do relatório "
+                f"que não entram na nota: {', '.join(partes)} (R5, R12, P12).{sobra}"
             ),
             "quem_decide": "Financeiro",  # R11/R12: Helena decide; a Ponte só recebe a contestação
             "cnpj": rules.PONTE_CNPJ,
             "linha_negocio": "REMESSA",
         })
+        for linha, motivo, contribuicao in contribuicoes:
+            rastro_rows.append({
+                "id_saida": pend_id,
+                "arquivo_origem": ARQUIVO_PONTE,
+                "ref_origem": linha["n_operacao"],
+                "valor": contribuicao,
+                "metadata": (f"pendencia_DIFERENCA_RELATORIO_PONTE,{motivo},"
+                             f"linha=L{int(linha['linha_origem'])}"),
+            })
 
-    # Rastro das pendências (`check_rastro` exige origem para todas as saídas).
+    # Rastro das pendências (`check_rastro` exige origem para todas as saídas). A RM-CONTEST já
+    # emitiu o seu por operação; a duplicata conflitante aponta a operação (`ref_rastro`).
     pend_df = pd.DataFrame(pendencias)
     for p in pendencias:
+        if p["id"] == pend_id:
+            continue
+        ref = p.get("ref_rastro", p["ref_origem"])
+        metadata = f"pendencia_{p['tipo']}"
+        if ref != p["ref_origem"]:
+            metadata += f",linha={p['ref_origem'].rsplit('#', 1)[-1]}"
         rastro_rows.append({
             "id_saida": p["id"],
             "arquivo_origem": p.get("arquivo_origem", ARQUIVO_PONTE),
-            "ref_origem": p["ref_origem"],
+            "ref_origem": ref,
             "valor": p["valor_brl"],
-            "metadata": f"pendencia_{p['tipo']}",
+            "metadata": metadata,
         })
 
     result.comissoes = pd.DataFrame(comissao_rows_df)

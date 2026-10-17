@@ -88,6 +88,33 @@ def validate_rastro_integrity(rastro: pd.DataFrame, all_outputs_ids: set[str]) -
     return problemas
 
 
+REF_ARQUIVO_AUSENTE = "arquivo ausente"
+
+
+def validate_refs_origem(
+    rastro: pd.DataFrame, refs_por_arquivo: dict[str, set[str]], ausentes: set[str]
+) -> list[dict]:
+    """Toda linha do rastro aponta para uma linha que existe no arquivo de origem carregado.
+
+    Sem isso, a soma pode bater e o rastro ainda apontar para um CNPJ ou um rótulo, que não
+    levam a nenhuma linha (case: "todo número da saída aponta para a linha de origem").
+    Única exceção: pendência de frente bloqueada aponta o próprio arquivo ausente (R34).
+    """
+    if rastro.empty:
+        return []
+    invalidas: list[dict] = []
+    for arquivo, ref, id_saida in zip(rastro["arquivo_origem"].astype(str), rastro["ref_origem"].astype(str),
+                                      rastro["id_saida"], strict=True):
+        if arquivo in refs_por_arquivo:
+            if ref not in refs_por_arquivo[arquivo]:
+                invalidas.append({"id_saida": id_saida, "arquivo_origem": arquivo, "ref_origem": ref})
+        elif not (ref == REF_ARQUIVO_AUSENTE and set(arquivo.split("|")) <= ausentes):
+            invalidas.append({"id_saida": id_saida, "arquivo_origem": arquivo, "ref_origem": ref})
+    if not invalidas:
+        return []
+    return [{"codigo": "REF_ORIGEM_INEXISTENTE", "qtd": len(invalidas), "exemplos": invalidas[:10]}]
+
+
 def validate_cobertura_entradas(
     entradas: dict[str, set[str]], rastro: pd.DataFrame
 ) -> list[dict]:

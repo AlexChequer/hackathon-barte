@@ -218,6 +218,7 @@ def _dedup_orbe(
                     "id": f"CK-DUPCONF-{id_tx}-L{int(linha['linha_origem'])}",
                     "tipo": "DUPLICATA_CONFLITANTE",
                     "ref_origem": f"{id_tx}#L{int(linha['linha_origem'])}",
+                    "ref_rastro": id_tx,  # o rastro aponta a transação; a linha física vai na metadata
                     "arquivo_origem": ARQUIVO_ORBE,
                     "valor_brl": q(linha["valor_taxa"] or ZERO),
                     "motivo": (
@@ -448,6 +449,7 @@ def run(
     rastro_rows: list[dict] = []
     divergencias_rows: list[dict] = []
     notas_rows: list[dict] = []
+    rastro_proprio: set[str] = set()  # pendências que já emitem rastro por transação
 
     if not linhas_df.empty:
         # R4: 1 nota por CNPJ. Bridge tem 2 linhas de vigência com mesmo CNPJ: colapsa aqui.
@@ -497,6 +499,9 @@ def run(
                 # Zero: só vira pendência se não for Casa isenta ou outro cenário "explicado".
                 razoes_isento = _explicar_zero(grupo)
                 if not razoes_isento:
+                    rastro_rows.extend(_rastro_por_transacao(grupo, f"CK-NTZERO-{competencia}-{cnpj}",
+                                                             "pendencia_NOTA_ZERO_INESPERADA"))
+                    rastro_proprio.add(f"CK-NTZERO-{competencia}-{cnpj}")
                     pend_df = pd.concat([pend_df, pd.DataFrame([{
                         "id": f"CK-NTZERO-{competencia}-{cnpj}",
                         "tipo": "NOTA_ZERO_INESPERADA",
@@ -513,6 +518,10 @@ def run(
                         "ec": grupo["ec"].iloc[0],
                     }])], ignore_index=True)
             else:  # negativo
+                # Rastro = as transações que formam o saldo negativo (as mesmas da comissão).
+                rastro_rows.extend(_rastro_por_transacao(grupo, f"CK-NTNEG-{competencia}-{cnpj}",
+                                                         "pendencia_NOTA_NEGATIVA"))
+                rastro_proprio.add(f"CK-NTNEG-{competencia}-{cnpj}")
                 pend_df = pd.concat([pend_df, pd.DataFrame([{
                     "id": f"CK-NTNEG-{competencia}-{cnpj}",
                     "tipo": "NOTA_NEGATIVA",
@@ -529,7 +538,7 @@ def run(
                     "ec": grupo["ec"].iloc[0],
                 }])], ignore_index=True)
 
-        # Divergências por transação (R1 + R8), com a causa decidida por regra (P-causa)
+        # Divergências por transação (R1 + R8), com a causa decidida por regra (P26)
         causas = checkout_causa.classificar(linhas_df, registry)
         divergentes = linhas_df[linhas_df["divergencia"] != ZERO]
         for _, tx in divergentes.iterrows():
@@ -563,14 +572,11 @@ def run(
         pendencias_cond = []
 
     # Rastro de pendências (precisa de origem para `check_rastro`, inclusive quando valor=0).
+    # Pendência com `rastro_proprio` já emitiu uma linha por transação acima.
     for p in pend_df.to_dict("records") if not pend_df.empty else []:
-        rastro_rows.append({
-            "id_saida": p["id"],
-            "arquivo_origem": p.get("arquivo_origem", ARQUIVO_ORBE),
-            "ref_origem": p["ref_origem"],
-            "valor": p["valor_brl"],
-            "metadata": f"pendencia_{p['tipo']}",
-        })
+        if p["id"] in rastro_proprio:
+            continue
+        rastro_rows.append(_rastro_pendencia(p))
 
     result.comissoes = pd.DataFrame(comissoes_rows)
     result.divergencias = pd.DataFrame(divergencias_rows)
@@ -590,6 +596,24 @@ def run(
     result.rastro = pd.DataFrame(rastro_rows)
     result.diagnosticos = diagnosticos
     return result
+
+
+def _rastro_por_transacao(grupo: pd.DataFrame, id_saida: str, metadata: str) -> list[dict]:
+    """Uma linha de rastro por transação do lojista, com a comissão de cada uma."""
+    return [{"id_saida": id_saida, "arquivo_origem": ARQUIVO_ORBE, "ref_origem": tx["id_transacao"],
+             "valor": tx["comissao"], "metadata": metadata} for _, tx in grupo.iterrows()]
+
+
+def _rastro_pendencia(p: dict) -> dict:
+    """Rastro de pendência de uma linha. `ref_rastro` (se houver) é a ref real no arquivo de origem."""
+    ref = p.get("ref_rastro")
+    if not isinstance(ref, str):
+        ref = p["ref_origem"]
+    metadata = f"pendencia_{p['tipo']}"
+    if ref != p["ref_origem"]:
+        metadata += f",linha={str(p['ref_origem']).rsplit('#', 1)[-1]}"
+    return {"id_saida": p["id"], "arquivo_origem": p.get("arquivo_origem", ARQUIVO_ORBE), "ref_origem": ref,
+            "valor": p["valor_brl"], "metadata": metadata}
 
 
 def _competencia_fmt(competencia: str) -> str:

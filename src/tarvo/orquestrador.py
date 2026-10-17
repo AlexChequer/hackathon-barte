@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import json
 import logging
 import shutil
 import subprocess
@@ -21,7 +22,7 @@ from pathlib import Path
 import pandas as pd
 
 from tarvo import condicoes as cond_mod
-from tarvo import frentes, output, persistencia, rules, sinais
+from tarvo import controle, frentes, output, persistencia, rules, sinais
 from tarvo.engines import EngineResult, checkout, extratos, remessa
 from tarvo.loaders import FILES, OPCIONAIS, load_disponiveis
 
@@ -45,6 +46,7 @@ class ClosingResult:
     hashes: dict[str, str]
     commit: str | None
     bloqueios: list[dict] = field(default_factory=list)
+    controle: dict = field(default_factory=dict)
 
 
 def _hash(path: Path) -> str:
@@ -228,6 +230,34 @@ def run_closing(
                 entradas_esperadas[banco] = set(sources[banco]["ref_origem"].astype(str).unique())
     integridade.extend(output.validate_cobertura_entradas(entradas_esperadas, rastro))
 
+    # Origem: cada linha do rastro aponta para uma linha que existe no arquivo (não CNPJ nem rótulo).
+    refs_por_arquivo: dict[str, set[str]] = {}
+    if sources.get("orbe") is not None:
+        refs_por_arquivo |= {arquivo: set(grupo["id_transacao"].astype(str))
+                             for arquivo, grupo in sources["orbe"].groupby("arquivo_origem")}
+    if sources.get("ponte") is not None:
+        refs_por_arquivo["ponte"] = set(sources["ponte"]["n_operacao"].astype(str))
+    for banco in ("aurora", "meridiano"):
+        if sources.get(banco) is not None:
+            refs_por_arquivo[banco] = set(sources[banco]["ref_origem"].astype(str))
+    if sources.get("taxas") is not None:
+        refs_por_arquivo["taxas"] = {f"L{n}" for n in sources["taxas"]["linha_origem"]}
+    integridade.extend(output.validate_refs_origem(rastro, refs_por_arquivo, set(ausentes)))
+
+    # Fechamento contra a fonte: o total de cada arquivo é explicado pelas saídas.
+    relatorio_controle: dict = {"competencia": competencia}
+    pontes = []
+    if frentes.roda("checkout", presentes):
+        pontes.append(("orbe", controle.ponte_orbe(sources["orbe"], rastro)))
+    if frentes.roda("remessa", presentes):
+        pontes.append(("ponte", controle.ponte_ponte(sources["ponte"], rastro, competencia)))
+    if frentes.roda("extratos", presentes):
+        pontes += [(banco, controle.ponte_banco(banco, sources[banco], lancamentos))
+                   for banco in ("aurora", "meridiano") if banco in presentes]
+    for fonte, (relatorio, problemas_fonte) in pontes:
+        relatorio_controle[fonte] = relatorio
+        integridade.extend(problemas_fonte)
+
     # Diretório da execução (timestamp) + symlink `latest`.
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = saida / competencia / f"exec_{stamp}"
@@ -237,6 +267,9 @@ def run_closing(
                        strict=True))
     for nome, df in tabelas.items():
         output.write_output(df, nome, out_dir)
+    # Só no histórico da execução: saida/ da raiz é só dos 6 CSVs.
+    (out_dir / "controle_fechamento.json").write_text(
+        json.dumps(relatorio_controle, ensure_ascii=False, indent=2), encoding="utf-8")
     # R26: a entrega é a pasta saida/ da raiz com os 6 CSVs do último fechamento; o histórico
     # de cada execução fica em saida/<competência>/exec_*/ (fora do git).
     for nome in SAIDAS:
@@ -283,4 +316,5 @@ def run_closing(
         lancamentos=lancamentos, pendencias=pendencias, rastro=rastro,
         problemas_rastro=problemas_df, problemas_integridade=integridade,
         duracoes_s=duracoes, hashes=hashes, commit=commit, bloqueios=bloqueios,
+        controle=relatorio_controle,
     )
