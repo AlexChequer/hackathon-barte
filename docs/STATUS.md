@@ -1,6 +1,22 @@
-# Status: 17/10, ~13h
+# Status: 17/10, ~13h15
 
-Comece aqui. Detalhes: `HIPOTESES.md` (R1–R31, P1–P24, O1), `docs/BACKLOG.md` (o que falta), `docs/MVP_V1.md` (arquitetura do motor).
+Comece aqui. Detalhes: `HIPOTESES.md` (R1–R34, P1–P24, O1), `docs/BACKLOG.md` (gaps numerados e donos), `docs/MVP_V1.md` (arquitetura do motor).
+
+## Níveis do case × o que já entregamos
+
+| Nível | O case pede | Situação |
+|---|---|---|
+| **Mínimo** | Comissão de checkout por lojista, com rastro | ✅ 21 lojistas, R$ 207.039,73, rastro exato; validada por implementação independente (André) e referência manual 14/14 |
+| **Alvo** | + comissão de remessa | ✅ 14 lojistas, R$ 39.543,45 (50% por operação, sem duplicata e sem negativos) |
+| | + divergências de taxa, transação por transação | ✅ 233 linhas: `CK-DIV` (Orbe errou, R$ 1.576,23), `CK-COND` (Casa, concessão fora do contrato), `RM-DIV` (Mundo Aberto, R$ 1.418,85) |
+| | + notas a emitir | ✅ 20 checkout + 1 Ponte; ≤ 0 sem nota e com pendência |
+| | + lançamentos classificados no plano de contas | ✅ 184/184 por regra, contrapartida (R9), só contas analíticas |
+| **Extra** | + pendências com motivo e quem decide | ✅ 14 pendências agregadas por contraparte e lojista (R24.1), cada uma com motivo, fonte (R#) e dono |
+| | + rastro completo | ✅ soma exata por `id_saida` + cobertura (toda linha de entrada aparece em alguma saída) |
+| | + roda em outubro sem retrabalho | ⚠️ nada fixo de setembro, competência inferida, condições comerciais e sinais versionados. **Falta:** arquivo ausente e layout novo (R34), Atlas confirmada depois (R18), ajuste da Ponte (R27) |
+| **Entrega** | `saida/` com os 6 CSVs | ❌ **bloqueia**: hoje ficam em `saida/2026-09/exec_*` e `saida/` está no `.gitignore` (gap 1) |
+| | README que diz como rodar | ❌ **bloqueia** (gap 2) |
+| | `HIPOTESES.md`, `PROMPTS/MOMENTOS.md` | ✅ (5 momentos, 4 com erro da IA) · ❌ export dos prompts das sessões |
 
 ## A solução em uma frase
 
@@ -16,7 +32,7 @@ Um comando (`python -m tarvo --dados <pasta do mês> --saida saida`) lê os 6 ar
 | `divergencias_taxa` | 233 | `CK-DIV` 92 (Rota, Bridge: cobrar da Orbe R$ 1.576,23) · `CK-COND` 118 (Casa: devolver, fora da cobrança) · `RM-DIV` 23 (Mundo Aberto R$ 1.418,85) |
 | `notas_a_emitir` | 21 | 20 checkout + 1 Ponte Câmbio (R$ 39.543,45) |
 | `lancamentos_classificados` | 184 | 184/184 por regra, só contas analíticas |
-| `pendencias` | 13 | Atlas 1 (Comercial) · contestação Orbe 2 (Rota, Bridge) · Casa devolução 1 · Casa nota negativa 1 · negativos da Ponte 4 · conferir TED 1 · extratos 3 |
+| `pendencias` | 14 | Atlas sem contrato 1 + alerta de antecipação 1 (Comercial) · contestação Orbe 2 (Rota, Bridge) · Casa devolução 1 (R$ 15.396,77) · Casa nota negativa 1 · negativos da Ponte 4 · conferir TED 1 · extratos 3 |
 | `rastro` | 4.802 | Soma exata por `id_saida` |
 
 Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementação independente do André bate centavo a centavo nas 21 comissões de checkout.
@@ -42,7 +58,8 @@ Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R26 `saida/` com os 6 CSVs de setembro **na raiz** | ❌ hoje vai para `saida/2026-09/exec_*` |
 | R27 ajuste de contestação da Ponte no mês seguinte (P21) | ❌ sem caso em setembro |
 | R28.3 negativo com os dois valores (P23) | ❌ |
-| O1 um comando, nada fixo para setembro, README com chave | ✅ código · ❌ README |
+| O1 um comando, nada fixo para setembro, README com chave | ✅ código · ❌ README · ❌ `saida/` na raiz |
+| R34 avisar quando o layout quebra; arquivo ausente não segura o mês | ❌ gaps 17 e 18 |
 | P20 sinais de condição especial na planilha | ✅ palavras-chave (Laya experimental, desligado: não melhorou o acerto) |
 
 ## Hardening do pipeline (17/10 tarde, commit `facce8b`)
@@ -64,15 +81,15 @@ Resultado em setembro: 35 comissões, 13 pendências, 184/184 classificação, r
 
 | Branch | Dono | Estado |
 |---|---|---|
-| `main` | todos | MVP v1 (Helio) + generalização para qualquer mês + R3 por CNPJ |
-| `feat/condicoes-comerciais` | Alex | Mergeada no `main` às ~12h15 (condições comerciais, detector de sinais, R26–R31) |
-| `solucao_minimo` | André | Implementação independente do checkout que valida o `main`. **Não mergear como está**: apaga `src/tarvo/`. 15 commits atrás do `main` |
-| `tarvo-mvp-implementation-7e6965eb` | Helio | Mergeada (PR #1) e apagada |
+| `main` | todos | Tudo integrado até 13h06 |
+| `solucao_minimo` | André | Validação independente do checkout. **Não mergear** (apaga `src/tarvo/`) |
+
+Nenhuma branch aberta de Helio ou André desde o hardening do Helio (12h33, direto no `main`).
 
 ## Quem fez o quê
 
-- **Alex**: repo, loaders e testes de integridade dos dados; mapa das armadilhas; perguntas ao financeiro e registro R1–R31; generalização para qualquer mês; R3 por CNPJ; condições comerciais (Casa); detector de sinais (Laya); backlog e status.
-- **Helio**: MVP v1 de ponta a ponta (3 motores, orquestrador, rastro exato, SQLite de execuções e decisões, avaliação contra referência manual, Streamlit) e `MVP_V1.md`. Perguntas R8 (arredondamento) e R9 (plano de contas). Hardening do pipeline (dedup, two-pass antecipação, filtro de competência, `SPREAD_AUSENTE`, agrupamento por CNPJ, cobertura de entradas).
+- **Alex**: repo, loaders e testes de integridade; mapa das armadilhas; perguntas ao financeiro e registro R1–R34; generalização para qualquer mês; R3 por CNPJ; condições comerciais (Casa); detector de sinais; pendências por contraparte (Orbe, Atlas); alerta de antecipação; correção do bug de reversão; backlog e status.
+- **Helio**: MVP v1 de ponta a ponta (3 motores, orquestrador, rastro exato, SQLite de execuções e decisões, avaliação contra referência manual, Streamlit) e `MVP_V1.md`; hardening (dedup da Orbe, ordem independente, competência, validação de cobertura). Perguntas R8 e R9. Hardening do pipeline (dedup, two-pass antecipação, filtro de competência, `SPREAD_AUSENTE`, agrupamento por CNPJ, cobertura de entradas).
 - **André**: implementação independente do checkout (`solucao_minimo`) que confirmou os números do `main`; premissas M1–M4; pergunta R14.
 
 ## Trajetória
