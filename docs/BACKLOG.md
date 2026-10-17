@@ -43,7 +43,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 15 | Relatório de pendências por quem decide | R1, R24.1 | **Alex** | Não |
 | 16 | ✅ Painel (`python -m tarvo.web`): pendências por quem decide, rastro clicável de todo valor, divergências por natureza, lançamentos, **formulário de condição comercial** e decisão de sinal (grava em `config/condicoes_comerciais.json` e refaz o fechamento), upload dos arquivos do mês | P19, P20, O1 | **Alex** | Não |
 | 17 | **Layout:** validar colunas/abas de cada arquivo na entrada; mudança de layout → erro claro dizendo arquivo, coluna esperada e encontrada (hoje: traceback `KeyError`) | R34, O1 | a definir | Não, mas pesa em "roda em outubro" |
-| 18 | **Arquivo ausente:** fechar as frentes que não dependem dele (ex.: sem Ponte, checkout e extratos fecham) e gerar pendência "frente bloqueada: arquivo X ausente" (hoje: o fechamento inteiro falha) | R34 | a definir | Não, mas pesa em "roda em outubro" |
+| 18 | (Tela já recusa lote incompleto e diz o que falta, P25.) **Arquivo ausente:** fechar as frentes que não dependem dele (ex.: sem Ponte, checkout e extratos fecham) e gerar pendência "frente bloqueada: arquivo X ausente" (hoje: o fechamento inteiro falha) | R34 | a definir | Não, mas pesa em "roda em outubro" |
 
 A partir das 17h: André confere a saída final contra a `solucao_minimo` (validação independente; essa branch **não** é mergeada).
 
