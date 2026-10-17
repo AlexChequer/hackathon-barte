@@ -36,7 +36,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 8 | `quem_decide` = Financeiro em `RM-CONTEST`, duplicata e status desconhecido | R11, R12 | **Helio** | Não |
 | 9 | Negativo com dois valores: spread do relatório + diferença até o contrato | R28.3, P23 | **Helio** | Não |
 | 10 | Ajuste `AJUSTE REF PC-…` da Ponte no mês em que aparece (teste sintético) | R27, P21 | **Helio** | Não |
-| 11 | Pendência de contestação **Orbe × Rota** e **Orbe × Bridge** por lojista | R24.1, R28.1 | **Alex** | Não |
+| 11 | ✅ Pendência de contestação **Orbe × Rota** (R$ 1.546,28) e **Orbe × Bridge** (R$ 29,95) por lojista, `CONTESTACAO_ORBE`, valor líquido | R1, R16.3, R24.1, R28.1 | **Alex** | Não |
 | 12 | Alerta de antecipação para lojista sem histórico (Atlas) | R16.6, R28.2, P22 | **Alex** | Não |
 | 13 | CNPJ 39566044000119 da Atlas na pendência (só identidade) | R30 | **Alex** | Não |
 | 14 | Atlas confirmada depois: outubro puxa as linhas pendentes de setembro | R18 | **Alex** | Não |

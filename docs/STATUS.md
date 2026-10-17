@@ -34,7 +34,7 @@ Validação: 59 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R6 extratos: PIX sem id, devolução, transferência em trânsito | ✅ trânsito por cruzamento dos bancos, sem data fixa |
 | R7/P7 divergência de remessa cheia, tolerância 0,01 p.p. | ✅ |
 | R9/R19/R25 contrapartida; provisão baixa no mês seguinte | ✅ |
-| R10/R12/R24.1 pendência de contestação por contraparte e lojista (Rota, Bridge, Mundo Aberto, duplicata) | ❌ só a Casa está agregada |
+| R10/R12/R24.1 pendência de contestação por contraparte e lojista | ✅ Orbe × Rota, Orbe × Bridge, Tarvo × Casa · ❌ Ponte × Mundo Aberto, duplicata (Helio) |
 | R11/R12 `quem_decide` das pendências da Ponte = Financeiro | ⚠️ negativos ok; `RM-CONTEST` e duplicata ainda "Ponte Câmbio" |
 | R16.6/R28.2 alerta de antecipação só para lojista sem histórico (P22) | ❌ |
 | R18 Atlas confirmada depois: outubro puxa as linhas de setembro | ❌ |

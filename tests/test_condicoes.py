@@ -67,3 +67,28 @@ def test_orbe_acima_da_planilha_durante_condicao_separa_as_duas_partes(sources):
     linhas = res.divergencias[res.divergencias["ref_origem"] == "TX88410932"].set_index("id_saida")
     assert linhas.loc["CK-COND-TX88410932", "diferenca_brl"] == Decimal("16.38")
     assert linhas.loc["CK-DIV-TX88410932", "diferenca_brl"] == Decimal("3.04")
+
+
+def test_uma_contestacao_da_orbe_por_lojista_com_diferenca_liquida(res):
+    """R1 + R24.1 + R16.3: uma pendência por (Orbe, lojista), valor líquido dos CK-DIV, Helena decide."""
+    pend = res.pendencias[res.pendencias["tipo"] == "CONTESTACAO_ORBE"].set_index("ref_origem")
+    assert set(pend.index) == {ROTA_CNPJ, "22224579000109"}
+    assert pend.loc[ROTA_CNPJ, "valor_brl"] == Decimal("1546.28")  # 83 vendas − 4 estornos
+    assert pend.loc["22224579000109", "valor_brl"] == Decimal("29.95")
+    assert set(pend["quem_decide"]) == {"Financeiro"}
+    for _, linha in pend.iterrows():
+        rastro = res.rastro[res.rastro["id_saida"] == linha["id_saida"]]
+        divs = res.divergencias[res.divergencias["id_saida"].str.startswith("CK-DIV-")
+                                & (res.divergencias["cnpj"] == linha.name)]
+        assert sorted(rastro["ref_origem"]) == sorted(divs["ref_origem"])
+        assert sum(rastro["valor"]) == linha["valor_brl"]
+
+
+def test_casa_nao_entra_na_contestacao_da_orbe(res):
+    pend = res.pendencias[res.pendencias["tipo"] == "CONTESTACAO_ORBE"]
+    assert CASA_CNPJ not in set(pend["ref_origem"])
+
+
+def test_contestacao_usa_o_nome_canonico_do_lojista(res):
+    pend = res.pendencias[res.pendencias["ref_origem"] == "22224579000109"]
+    assert pend["motivo"].iloc[0].startswith("Escola Bridge de Idiomas Ltda")
