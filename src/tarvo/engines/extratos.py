@@ -18,6 +18,8 @@ from tarvo.money import q
 
 CONFIANCA_REGRA = Decimal("1.00")
 CONFIANCA_PENDENTE = Decimal("0.00")
+# Conta dada pela regra, mas provisória: a linha abriu pendência (ex.: PIX sem identificação, R6).
+CONFIANCA_PROVISORIA = Decimal("0.50")
 
 
 def _classifica_aurora(row: pd.Series) -> dict:
@@ -230,7 +232,7 @@ def run(
             "valor": row["valor"],
             "conta_codigo": conta,
             "metodo": cls["metodo"],
-            "confianca": cls["confianca"],
+            "confianca": (CONFIANCA_PROVISORIA if conta and cls.get("pendencia") else cls["confianca"]),
             "motivo": cls["motivo"],
         })
         rastros.append({
