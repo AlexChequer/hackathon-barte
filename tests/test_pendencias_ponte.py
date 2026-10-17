@@ -1,6 +1,6 @@
 """Pendências da remessa pedidas pela Helena (R10, R12, R28.3): dado real de set/2026 + casos sintéticos."""
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -76,3 +76,26 @@ def test_sintetico_sem_duplicata_nao_abre_e_com_triplicata_conta_duas_copias(fon
     tri = pd.concat([ponte, copia], ignore_index=True)
     linha = _pend(rm.run(tri, fontes["taxas"], "2026-09"), "DUPLICATA_RELATORIO_PONTE").iloc[0]
     assert linha["valor_brl"] == Decimal("1643.76")
+
+
+# --- gap 9: negativo com os dois valores, cada um com nome (R28.3) ---
+
+def test_negativo_traz_o_do_relatorio_e_a_diferenca_ate_o_contrato(res):
+    pend = _pend(res, "SPREAD_NEGATIVO_CONTESTAR").set_index("ref_origem")
+    linha = pend.loc["PC-0926-0210"]
+    assert linha["valor_brl"] == Decimal("-687.52")  # o que aconteceu: valor do relatório
+    assert "-687.52" in linha["motivo"] and "-1351.87" in linha["motivo"]
+    assert "pedir à Ponte" in linha["motivo"]
+    assert "-637.91" in pend.loc["PC-0926-0545", "motivo"]  # contrato 1,4% (Novo Horizonte)
+
+
+def test_sintetico_negativo_de_lojista_com_spread_negociado_usa_o_contrato_dele(fontes):
+    ponte = fontes["ponte"].copy()
+    alvo = ponte.index[ponte["cnpj"] == MUNDO_ABERTO][0]
+    me, ptax = ponte.loc[alvo, "valor_me"], ponte.loc[alvo, "ptax_ref"]
+    ponte.loc[alvo, "spread_pct"] = Decimal("-0.01")
+    ponte.loc[alvo, "spread_brl"] = (Decimal("-0.01") * ptax * me).quantize(Decimal("0.01"))
+    res = rm.run(ponte, fontes["taxas"], "2026-09")
+    linha = _pend(res, "SPREAD_NEGATIVO_CONTESTAR").set_index("ref_origem").loc[ponte.loc[alvo, "n_operacao"]]
+    esperado = (Decimal("-0.022") * ptax * me).quantize(Decimal("0.01"), ROUND_HALF_UP)  # -1% − 1,2%
+    assert str(esperado) in linha["motivo"]

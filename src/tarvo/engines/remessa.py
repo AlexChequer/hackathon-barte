@@ -184,7 +184,9 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "valor_brl": q(spread_brl),
                 "motivo": (
                     f"Spread negativo em {n_op} ({cliente}): fora da comissão e da nota (R5). "
-                    f"Contestar com a Ponte.{f' Obs. da Ponte: {obs}.' if obs else ''}"
+                    f"Valor do relatório (o que aconteceu): {q(spread_brl)}. "
+                    + _ate_o_contrato(spread_pct_valor, contratos.get(cnpj), ptax, valor_me)
+                    + f"{f' Obs. da Ponte: {obs}.' if obs else ''}"
                 ),
                 "quem_decide": "Financeiro",
                 "cnpj": cnpj,
@@ -389,6 +391,15 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     result.rastro = pd.DataFrame(rastro_rows)
     result.diagnosticos = [{"codigo": "DUPLICATA_RESOLVIDA", **d} for d in duplicados_resolvidos]
     return result
+
+
+def _ate_o_contrato(spread_pct, contratado, ptax, valor_me) -> str:
+    """R28.3: o que a Helena vai pedir à Ponte, porque a trava deveria ter sido honrada."""
+    if None in (spread_pct, contratado, ptax, valor_me):
+        return "Sem spread contratado ou dados da operação para calcular a diferença até o contrato."
+    diferenca = q((spread_pct - contratado) * ptax * valor_me)
+    return (f"Diferença até o spread do contrato ({pct(contratado)}% sobre a PTAX), o que pedir à Ponte: "
+            f"{diferenca} (R28.3).")
 
 
 def _pendencia_duplicata(n_op: str, grupo: pd.DataFrame, competencia: str) -> dict:
