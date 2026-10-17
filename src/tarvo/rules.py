@@ -11,12 +11,12 @@ from decimal import Decimal
 
 VERSION = "2026-10-17.1"
 
-# R3: de-para EC Orbe → linha da planilha vigente (lojista textual).
-# A taxa/CNPJ vem da respectiva linha da aba vigente, obtida em runtime.
-EC_PARA_LINHA = {
-    "1043300981": "Novo Horizonte Intercambio",
-    "1043396662": "Horizonte Viagens",
-    "1038867654": "Kiwi Experience",
+# R3: de-para EC Orbe → CNPJ, confirmado pela Helena. Taxas e vigências vêm das
+# linhas da planilha com esse CNPJ (em runtime); o nome do lojista não é usado.
+EC_PARA_CNPJ = {
+    "1043300981": "66564512000199",  # Novo Horizonte Intercâmbio
+    "1043396662": "78576234000179",  # Horizonte Viagens e Turismo
+    "1038867654": "07752116000126",  # Kiwi Experience
 }
 
 # R3 + P10: Atlas (1076801732) não tem contrato vigente.

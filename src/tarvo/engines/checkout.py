@@ -68,8 +68,6 @@ def _d(ptbr: str) -> dt.date:
 
 def build_taxas_registry(taxas: pd.DataFrame) -> dict[str, list[LojistaTaxas]]:
     """EC → lista de LojistaTaxas (uma por vigência). Inclui as 3 linhas resolvidas por R3."""
-    # Linhas da planilha indexadas por lojista (para R3) e por EC (quando preenchido).
-    linhas_por_lojista = {str(r["lojista"]).strip(): r for _, r in taxas.iterrows()}
 
     def _row_to_entry(row) -> LojistaTaxas:
         ini, fim = _parse_vigencia(row["vigencia_raw"])
@@ -93,10 +91,11 @@ def build_taxas_registry(taxas: pd.DataFrame) -> dict[str, list[LojistaTaxas]]:
         ec = r.get("ec_orbe")
         if ec and str(ec).lower() != "nan":
             registry.setdefault(str(ec), []).append(_row_to_entry(r))
-    # R3: Novo Horizonte, Horizonte Viagens, Kiwi.
-    for ec, lojista_nome in rules.EC_PARA_LINHA.items():
-        if lojista_nome in linhas_por_lojista:
-            registry.setdefault(ec, []).append(_row_to_entry(linhas_por_lojista[lojista_nome]))
+    # R3: EC → CNPJ. Todas as linhas desse CNPJ (uma por vigência). Sem linha → EC fica
+    # fora do registry e a transação vira pendência CK-SEMCAD.
+    for ec, cnpj in rules.EC_PARA_CNPJ.items():
+        for _, r in taxas[taxas["cnpj"] == cnpj].iterrows():
+            registry.setdefault(ec, []).append(_row_to_entry(r))
     return registry
 
 

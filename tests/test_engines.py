@@ -213,3 +213,11 @@ def test_decisao_marcada_reavaliar_quando_rules_mudam(tmp_path):
     assert len(decisoes) == 1
     assert decisoes[0]["precisa_reavaliar"] == 1
     assert "rules_version_mudou" in decisoes[0]["motivo_reavaliar"]
+
+
+def test_ec_r3_resolvido_por_cnpj_mesmo_se_nome_mudar(sources):
+    """R3: o de-para é EC → CNPJ. Renomear o lojista na planilha não pode quebrar o vínculo."""
+    taxas = sources["taxas"].assign(lojista=lambda df: df["lojista"] + " (renomeado)")
+    registry = ck.build_taxas_registry(taxas)
+    for ec, cnpj in rules.EC_PARA_CNPJ.items():
+        assert {e.cnpj for e in registry[ec]} == {cnpj}
