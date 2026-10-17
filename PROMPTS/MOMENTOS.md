@@ -21,3 +21,8 @@ De 2 a 4 momentos. Para cada um, em uma ou duas frases: o que pedimos, o que a I
 - **Pedido:** revisar a pergunta do Helio sobre o truncamento da Orbe.
 - **IA:** confirmou o truncamento nas 1.943 linhas (bom) e sugeriu propor divergência = `valor_taxa` − comissão, porque assim "Σ comissão + Σ divergência = Σ cobrado, sem sobra de centavo".
 - **O que fizemos:** mantivemos a pergunta aberta. A Helena respondeu o oposto (R8): arredondamento comum, divergência = bruto × (aplicada − contratada), e centavo de truncamento **não** é divergência. Pela fórmula da IA, as 1.001 linhas em que o truncamento muda o centavo gerariam diferença mesmo com a taxa certa, e os valores das divergências reais sairiam diferentes do que a Helena quer.
+
+## 5. Construção: "instrução mais longa = mais consistente" não valeu para o Laya (candidato)
+- **Pedido:** usar o Laya (classificador open source, local, só sim/não) para achar anotações de condição comercial escondidas na planilha, com uma instrução grande e cheia de guardrails para ficar consistente.
+- **IA:** escreveu a instrução longa, mas antes de integrar rodou num conjunto rotulado de 15 anotações (`tests/fixtures/sinais_rotulados.json`). A instrução longa respondeu "sim" para quase tudo (8/15); a curta acertava 9/15.
+- **O que fizemos:** trocamos por um comitê de 3 instruções curtas com voto majoritário (10/15), em união com palavras-chave (14/15 sozinhas). Ficou registrado que o Laya hoje não acrescenta acerto sobre as palavras-chave nesse conjunto; o número é medido por `scripts/avaliar_sinais.py`.
