@@ -25,6 +25,7 @@ from tarvo import casos as casos_mod
 from tarvo import condicoes as cond_mod
 from tarvo import controle, decisoes, frentes, output, persistencia, rules, sinais
 from tarvo import pendencias as pend_mod
+from tarvo import rascunhos as rascunhos_mod
 from tarvo.engines import EngineResult, checkout, extratos, remessa
 from tarvo.loaders import FILES, OPCIONAIS, load_disponiveis
 from tarvo.loaders.orbe import ARQUIVO_PENDENTES, NOME_PENDENTES, escrever_orbe, load_orbe
@@ -50,6 +51,7 @@ class ClosingResult:
     commit: str | None
     bloqueios: list[dict] = field(default_factory=list)
     controle: dict = field(default_factory=dict)
+    rascunhos: list[dict] = field(default_factory=list)
     casos: dict = field(default_factory=dict)                   # id_saida -> Caso
     aplicacoes_decisoes: list[dict] = field(default_factory=list)
 
@@ -321,6 +323,11 @@ def run_closing(
     # Só no histórico da execução: saida/ da raiz é só dos 6 CSVs.
     (out_dir / "controle_fechamento.json").write_text(
         json.dumps(relatorio_controle, ensure_ascii=False, indent=2), encoding="utf-8")
+    # P36: rascunhos de envio a terceiros (um por destinatário), também só no histórico.
+    rascunhos = rascunhos_mod.gerar(pendencias, rastro, comissoes, divergencias, lancamentos, condicoes,
+                                    competencia)
+    (out_dir / "rascunhos.json").write_text(json.dumps(rascunhos, ensure_ascii=False, indent=2),
+                                            encoding="utf-8")
     # R26: a entrega é a pasta saida/ da raiz com os 6 CSVs do último fechamento; o histórico
     # de cada execução fica em saida/<competência>/exec_*/ (fora do git).
     for nome in SAIDAS:
@@ -392,7 +399,7 @@ def run_closing(
         lancamentos=lancamentos, pendencias=pendencias, rastro=rastro,
         problemas_rastro=problemas_df, problemas_integridade=integridade,
         duracoes_s=duracoes, hashes=hashes, commit=commit, bloqueios=bloqueios,
-        controle=relatorio_controle,
+        controle=relatorio_controle, rascunhos=rascunhos,
         casos=casos_por_id,
         aplicacoes_decisoes=aplicacoes_registradas,
     )

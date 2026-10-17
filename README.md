@@ -6,7 +6,7 @@ A Tarvo leva 8 dias para fechar o mês. Boa parte das regras só existe na cabe�
 
 ## Rodar
 
-Requer Python 3.11 ou mais novo. **Não precisa de chave de API nem de Node.**
+Requer Python 3.11 ou mais novo. **Não precisa de chave de API nem de Node.** A chave da OpenAI é opcional e só serve para os rascunhos de mensagens (abaixo).
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -48,8 +48,9 @@ Aponte `--dados` para a pasta com os arquivos do mês, no mesmo formato. Pode se
 
 ### Configuração opcional
 
-Nenhuma variável é obrigatória. Uma é opcional, definida no ambiente (há exemplo em `.env.example`):
+Nenhuma variável é obrigatória. As opcionais ficam no arquivo `.env` da raiz (copie de `.env.example`; o `.env` não vai para o git):
 
+- `OPENAI_API_KEY` (e `OPENAI_MODEL`, padrão `gpt-6-luna`) liga os **rascunhos de envio a terceiros** no fim da página de pendências: uma mensagem por destinatário (Orbe, Ponte Câmbio, cada lojista, Comercial), juntando as pendências dele. A IA só redige: recebe marcadores (`{VALOR_1}`, `{LOJISTA_1}`…) no lugar de nomes, CNPJs, valores e ids, e os valores reais são preenchidos e conferidos na máquina. Um validador reprova texto com número escrito pelo modelo, marcador inventado, assinatura ou promessa de prazo (P36). Sem a chave, a seção mostra "Rascunhos indisponíveis" e nada mais muda.
 - `TARVO_CLASSIFICADOR=laya` liga o classificador open source local [Laya](https://laya-ai.com/) para achar anotações de condição especial na planilha de taxas. Requer `pip install -e ".[classificador]"`. Vem **desligado**: palavras-chave acertaram 14 de 15 num conjunto rotulado, contra 13 de 15 com o Laya (`scripts/avaliar_sinais.py`).
 
 ## O que sai em `saida/`

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Fechamento, Linha, SinalAberto } from "../api";
 import { ARQUIVO, cnpj, tipoPendencia } from "../format";
 import { FluxoDecisao } from "./FluxoDecisao";
+import { Rascunhos } from "./Rascunhos";
 import { Valor } from "./Valor";
 
 const ORDEM = ["Financeiro", "Financeiro + Comercial", "Comercial"];
@@ -122,6 +123,7 @@ export function Pendencias({ fechamento, sinais, aoRegistrarCondicao, aoResolver
           </ul>
         </section>
       ))}
+      <Rascunhos rascunhos={fechamento.rascunhos ?? []} />
     </div>
   );
 }

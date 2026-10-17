@@ -21,6 +21,20 @@ export interface Fechamento {
   tabelas: Record<"comissoes" | "divergencias" | "notas" | "lancamentos" | "pendencias", Linha[]>;
   casos: Record<string, Caso>;
   aplicacoes_decisoes: { caso_hash: string; decisao_id: number; escopo: string; acao_tipo: string }[];
+  rascunhos?: Rascunho[];
+}
+
+/** Rascunho de mensagem para um destinatário do fechamento (P36). */
+export interface Rascunho {
+  chave: string;
+  destinatario: string;
+  papel: "contraparte" | "lojista" | "interno";
+  pendencias: string[];
+  status: "gerado" | "indisponivel" | "reprovado" | "erro";
+  assunto: string;
+  corpo: string;
+  anexo: string[];
+  aviso: string;
 }
 
 export interface Caso {

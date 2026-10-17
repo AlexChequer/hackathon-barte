@@ -136,6 +136,7 @@ def criar_app(
                         ("comissoes", "divergencias", "notas", "lancamentos", "pendencias")},
             "casos": casos_por_id,
             "aplicacoes_decisoes": r.aplicacoes_decisoes,
+            "rascunhos": r.rascunhos,
         }
 
     def usuario_de(user: str | None, perfil: str | None) -> auth_mod.Usuario:

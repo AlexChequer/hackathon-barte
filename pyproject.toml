@@ -10,6 +10,8 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "python-multipart>=0.0.9",
+    # rascunhos de envio a terceiros (P36); só chama a API com OPENAI_API_KEY
+    "openai>=3.33",
 ]
 
 [project.optional-dependencies]
