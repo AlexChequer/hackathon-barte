@@ -22,6 +22,8 @@ python -m tarvo --dados data/raw/set2026 --saida saida
 pytest
 ```
 
+Os 6 arquivos do fechamento ficam na raiz de `saida/` (é o que vai para o repositório). Cada execução também fica guardada em `saida/<competência>/exec_<hora>/`, fora do git.
+
 ### Painel (tela)
 
 ```bash

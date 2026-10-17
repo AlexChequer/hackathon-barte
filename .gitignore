@@ -16,7 +16,10 @@ build/
 .claude/settings.local.json
 CLAUDE.local.md
 ~$*.xlsx
-saida/
+# saida/: só os 6 CSVs da raiz vão para o git (entrega, R26). Histórico, uploads e SQLite ficam fora.
+saida/*/
+saida/*.db
+saida/*.sqlite
 
 # capturas do Playwright MCP
 .playwright-mcp/
