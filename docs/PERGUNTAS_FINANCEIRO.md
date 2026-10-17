@@ -13,6 +13,16 @@ Canal: `#duvidas-hackathon-ai`, prefixo `[financeiro] Fox AI:`. Uma dúvida por 
 - R8: ROUND_HALF_UP por linha; divergência compara taxas, não valores.
 - R9: `conta_codigo` = contrapartida; folha/tributos/repasse Ponte 08 baixam passivo/recebível; demais despesas vão direto.
 
+## Checkout: fila de 17/10 (mandar uma por vez, nesta ordem)
+
+Última respondida: **R9** (Helio, 16/10 ~21h15). Nada depois disso.
+
+- [ ] **C1. Estorno de venda divergente.** `[financeiro] Fox AI: estorno de venda que tinha divergência. Ex.: TX88446419 (Rota Global) foi cobrada a 4,09% e o contrato é 3,59%. No estorno, propomos registrar a divergência com sinal negativo (−52,10), anulando a da venda. São 5 casos em setembro (Rota e Casa), −107,53 no total. Confere?`
+- [ ] **C2. Divergência também vira pendência?** `[financeiro] Fox AI: divergências de checkout. Hoje cada uma sai só em divergencias_taxa.csv (210 linhas, R$ 16.973,65 líquido), com id e valor por transação. Propomos não repetir em pendencias.csv: a lista de divergências já é a fila para você decidir devolver ao lojista/cobrar da Orbe. Confere, ou quer uma pendência por lojista com o total?`
+- [ ] **C3. Divergência a menor (P4).** Só se sobrar tempo: em setembro não há nenhum caso (Orbe nunca cobrou abaixo do contrato). Hoje o motor reportaria com sinal negativo.
+
+Já cobertos e **não precisam** de pergunta: Casa com comissão −5,50 (estornos de agosto pela taxa antiga) → sem nota + pendência para a Helena (R2 + R4); Atlas → pendência Comercial com o valor cobrado pela Orbe (R3 + P10); Bridge 15–18/09 → divergência pela vigência (P3).
+
 ## Ainda materialmente abertas
 
 1. **Divergência a menor** (P4): se a Orbe cobrou **menos** que o contratado também é divergência (Tarvo deixou de receber)? Nenhum caso em setembro; o motor já reporta com sinal.
