@@ -26,7 +26,7 @@ Abre `http://127.0.0.1:8000` (para outra porta, use `--porta 8010`). A tela usa 
 
 | Aba | O que mostra |
 |---|---|
-| **Pendências** | A fila do mês por quem decide (Helena, Helena com o comercial, comercial). Cada item tem o motivo e, quando cabe, a ação |
+| **Pendências** | A fila do mês por quem decide (Helena, Helena com o comercial, comercial). Cada item tem o motivo, o próximo passo e o fluxo de decisão: alguém propõe e quem tem o papel aprova (o Comercial aprova taxa, o Financeiro aprova regra de fechamento, `config/usuarios.json`). A decisão aprovada vale nos meses seguintes para o mesmo caso. No fim da página, os rascunhos de mensagem a terceiros (opcional, abaixo) |
 | **Comissões e notas** | Totais do mês e tabelas por lojista |
 | **Divergências** | Separadas por natureza: a Orbe cobrou diferente do contrato (cobrar da Orbe), condição comercial não avisada (devolver ao lojista) e spread acima do contrato (contestar com a Ponte) |
 | **Lançamentos** | Extratos Aurora e Meridiano com a conta de contrapartida |
@@ -35,6 +35,7 @@ Abre `http://127.0.0.1:8000` (para outra porta, use `--porta 8010`). A tela usa 
 
 - **Rastro:** **qualquer valor é clicável** e abre as linhas de origem que somam até ele, no centavo.
 - **Enviar arquivos do mês:** fecha um mês novo por upload, sem mexer na pasta.
+- **Baixar a saída:** os 6 CSVs em `.zip` ou um por um.
 
 ### Outro mês
 
@@ -109,17 +110,19 @@ O front fica em `web/` (React + TypeScript + Vite + Tailwind + motion) e já vai
 
 | Arquivo | Para quê |
 |---|---|
-| `HIPOTESES.md` | Fatos, premissas (P1–P25) e todas as perguntas e respostas do financeiro (R1–R34), com hora e quem perguntou |
+| `HIPOTESES.md` | Fatos, premissas (P1–P36), todas as perguntas e respostas do financeiro (R1–R39), com hora e quem perguntou, e as regras de entrega da organização (O1–O7) |
 | `docs/STATUS.md` | Estado atual: regras × motor, branches, quem fez o quê |
 | `docs/CONTEXTO.md` | O negócio explicado e por que cada dúvida importa |
 | `docs/MAPA_DADOS.md` | O que tem em cada arquivo e as armadilhas encontradas |
 | `docs/MVP_V1.md` | Arquitetura e decisões do motor |
 | `docs/ESTUDO_MAIN_X_SOLUCAO_MINIMO.md` | Dicionário das colunas e a comparação com a implementação independente |
 | `docs/BACKLOG.md` | Gaps numerados, com dono |
-| `PROMPTS/` | Histórico das sessões de IA (`scripts/exportar_sessoes.py`) e `MOMENTOS.md` |
+| `PROMPTS/` | Sessões de IA dos três integrantes (`PROMPTS/sessoes/<github>/`, geradas por `scripts/exportar_sessoes.py`) e os 3 momentos escolhidos em `MOMENTOS.md` |
+| `docs/PITCH_ROTEIRO.md` | Roteiro do pitch, com a fala de cada slide e as perguntas prováveis |
+| `docs/FECHAMENTO_FINAL.md` | Checklist da entrega |
 
 ## Limitações conhecidas
 
 - **Memória entre meses (R18, P33, P34):** outubro relê as transações sem contrato e os lojistas de setembro a partir do histórico de `saida/<competência>/`. Isso só funciona se os dois meses forem fechados na mesma pasta de saída (o histórico não vai para o git).
 - **Provisão de folha e impostos do próprio mês:** não é gerada; o pacote não traz os valores.
-- **Colunas extras** além das pedidas: `causa_divergencia` nas divergências, `motivo` nos lançamentos e `metadata` no rastro. As colunas obrigatórias estão todas presentes, na ordem pedida, e a Helena confirmou que coluna extra não atrapalha (R36).
+- **Colunas extras** além das pedidas: `causa_divergencia` nas divergências, `motivo` nos lançamentos, `proximo_passo` nas pendências e `metadata` no rastro. As colunas obrigatórias estão todas presentes, na ordem pedida, e a Helena confirmou que coluna extra não atrapalha (R36).
