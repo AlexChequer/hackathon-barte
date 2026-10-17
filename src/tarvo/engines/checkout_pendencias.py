@@ -17,6 +17,7 @@ import pandas as pd
 from tarvo import rules
 from tarvo.condicoes import Condicao
 from tarvo.engines import checkout_causa
+from tarvo.loaders.orbe import ARQUIVO_PENDENTES
 from tarvo.money import ZERO, brl, pct, pct_br, q, sum_q
 
 ARQUIVO_ORBE = "orbe"
@@ -153,6 +154,11 @@ def pendencias_sem_contrato(transacoes: list[pd.Series], competencia: str) -> tu
                            "ref_origem": tx["id_transacao"], "valor": valor,
                            "metadata": "pendencia_SEM_CONTRATO"})
         total, bruto = sum_q(valores), sum_q(q(tx["valor_bruto"]) for tx in txs)
+        anteriores = [v for tx, v in zip(txs, valores, strict=True)
+                      if tx.get("arquivo_origem") == ARQUIVO_PENDENTES]
+        carregadas = (f" Inclui {len(anteriores)} transações de meses anteriores ainda pendentes "
+                      f"({brl(sum_q(anteriores))} cobrados pela Orbe), guardadas para faturar quando houver "
+                      "contrato (R18)." if anteriores else "")
         pendencias.append({
             "id": pend_id,  # rastro já emitido por transação; não passa pelo laço genérico
             "tipo": "SEM_CONTRATO",
@@ -162,21 +168,30 @@ def pendencias_sem_contrato(transacoes: list[pd.Series], competencia: str) -> tu
                 f"{cadastro['nome']} (CNPJ {cadastro.get('cnpj') or 'não confirmado'}, EC {ec}) sem contrato "
                 f"vigente: {len(txs)} transações, bruto {brl(bruto)}, a Orbe cobrou {brl(total)}. "
                 "Não fatura até o Comercial confirmar a taxa. Ao confirmar, a taxa vale desde o início e "
-                f"as linhas entram no mês seguinte (R3, R18). Fonte do CNPJ: {cadastro['fonte']}."
+                f"as linhas entram no mês seguinte (R3, R18).{carregadas} Fonte do CNPJ: {cadastro['fonte']}."
             ),
             "quem_decide": "Comercial",
         })
     return rastro, pendencias
 
 
-def _sem_historico(ec: str, txs: pd.DataFrame, competencia: str, ecs_com_contrato: set[str]) -> bool:
-    """P22: primeira movimentação depois do 1º dia do mês, ou EC sem contrato vigente."""
-    primeiro_dia = f"{competencia}-01"
-    return ec not in ecs_com_contrato or txs["data_movimento"].min().isoformat() > primeiro_dia
+def _sem_historico(ec: str, txs: pd.DataFrame, competencia: str, ecs_com_contrato: set[str],
+                   cnpj: str | None = None, cnpjs_mes_anterior: set[str] | None = None) -> bool:
+    """P22: EC sem contrato vigente, ou lojista que não estava no fechamento de checkout anterior (P33).
+
+    Sem o fechamento anterior (primeiro mês rodado, como setembro), vale a reserva: primeira
+    movimentação depois do 1º dia do mês.
+    """
+    if ec not in ecs_com_contrato:
+        return True
+    if cnpjs_mes_anterior is not None:
+        return cnpj not in cnpjs_mes_anterior
+    return txs["data_movimento"].min().isoformat() > f"{competencia}-01"
 
 
 def alertas_antecipacao(
-    transacoes: list[pd.Series], cnpj_por_ec: dict[str, str], competencia: str
+    transacoes: list[pd.Series], cnpj_por_ec: dict[str, str], competencia: str,
+    sem_contrato: set[str] | None = None, cnpjs_mes_anterior: set[str] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """R16.6 + R28.2 + R32 (P22): lojista sem histórico com antecipado acumulado > vendido acumulado.
 
@@ -187,11 +202,12 @@ def alertas_antecipacao(
         return [], []
     df = pd.DataFrame(transacoes)
     df["ec"] = df["cod_estabelecimento"].astype(str)
-    com_contrato = set(cnpj_por_ec) - set(rules.EC_SEM_CONTRATO)
+    com_contrato = set(cnpj_por_ec) - (set(rules.EC_SEM_CONTRATO) if sem_contrato is None else sem_contrato)
     rastro, pendencias = [], []
     for ec, txs in df.groupby("ec", sort=True):
         antecipacoes = txs[txs["tipo_lancamento"] == "ANTECIPACAO"].sort_values("data_movimento")
-        if antecipacoes.empty or not _sem_historico(ec, txs, competencia, com_contrato):
+        if antecipacoes.empty or not _sem_historico(ec, txs, competencia, com_contrato, cnpj_por_ec.get(ec),
+                                                    cnpjs_mes_anterior):
             continue
         vendas = txs[txs["tipo_lancamento"] == "VENDA"]
         pico = None

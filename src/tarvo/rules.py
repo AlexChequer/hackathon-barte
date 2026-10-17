@@ -6,24 +6,31 @@ Mudança de regra implica bump de VERSION para a persistência marcar execuçõe
 
 from __future__ import annotations
 
+import json
 from decimal import Decimal
+from pathlib import Path
 
 VERSION = "2026-10-17.3"
 
-# R3: de-para EC Orbe → CNPJ, confirmado pela Helena. Taxas e vigências vêm das
-# linhas da planilha com esse CNPJ (em runtime); o nome do lojista não é usado.
-EC_PARA_CNPJ = {
-    "1043300981": "66564512000199",  # Novo Horizonte Intercâmbio
-    "1043396662": "78576234000179",  # Horizonte Viagens e Turismo
-    "1038867654": "07752116000126",  # Kiwi Experience
-}
+# R3: de-para EC Orbe → CNPJ e ECs sem contrato vêm de config/cadastro_ec.json (fonte e quem aprovou
+# em cada item). EC novo confirmado pelo financeiro entra no JSON, não no código. Taxas e vigências vêm
+# das linhas da planilha com esse CNPJ (em runtime); o nome do lojista nunca é usado para casar.
+CAMINHO_CADASTRO_EC = Path(__file__).resolve().parents[2] / "config" / "cadastro_ec.json"
 
-# R3 + P10: EC sem contrato vigente → não fatura, 1 pendência por lojista para o Comercial (R24.1).
-# CNPJ só como identidade (R30: "só a taxa daquela aba é que não vale"); nunca lido para taxa.
-EC_SEM_CONTRATO = {
-    "1076801732": {"cnpj": "39566044000119", "nome": "Atlas Idiomas Ltda",
-                   "fonte": "R3 (não fatura) + R30 (CNPJ da aba ANTIGO 2025, só identidade)"},
-}
+
+def carregar_cadastro_ec(caminho: Path = CAMINHO_CADASTRO_EC) -> tuple[dict[str, str], dict[str, dict]]:
+    """(EC → CNPJ confirmado, EC sem contrato → identidade). Arquivo ausente = nenhum cadastro extra."""
+    if not caminho.exists():
+        return {}, {}
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    para_cnpj = {str(ec): item["cnpj"] for ec, item in dados.get("ec_para_cnpj", {}).items()}
+    sem_contrato = {str(ec): dict(item) for ec, item in dados.get("ec_sem_contrato", {}).items()}
+    return para_cnpj, sem_contrato
+
+
+# R3 + P10 + R30: EC sem contrato vigente → não fatura, 1 pendência por lojista para o Comercial (R24.1),
+# enquanto a planilha não tiver linha vigente para ele (R18). CNPJ só como identidade, nunca para taxa.
+EC_PARA_CNPJ, EC_SEM_CONTRATO = carregar_cadastro_ec()
 
 # R6: condições comerciais fora da planilha (ex.: isenção da Casa do Estudante) ficam em
 # config/condicoes_comerciais.json, lidas por tarvo.condicoes.

@@ -26,6 +26,7 @@ from tarvo import controle, frentes, output, persistencia, rules, sinais
 from tarvo import pendencias as pend_mod
 from tarvo.engines import EngineResult, checkout, extratos, remessa
 from tarvo.loaders import FILES, OPCIONAIS, load_disponiveis
+from tarvo.loaders.orbe import ARQUIVO_PENDENTES, NOME_PENDENTES, escrever_orbe, load_orbe
 
 log = logging.getLogger("tarvo.orq")
 
@@ -120,6 +121,29 @@ def _rastro_com_arquivo_da_orbe(rastro: pd.DataFrame, orbe: pd.DataFrame | None)
     return rastro.assign(arquivo_origem=rastro["arquivo_origem"].where(~da_orbe | novo.isna(), novo))
 
 
+def _mes_anterior(competencia: str) -> str:
+    ano, mes = int(competencia[:4]), int(competencia[5:7])
+    return f"{ano - 1}-12" if mes == 1 else f"{ano}-{mes - 1:02d}"
+
+
+def _historico_anterior(saida: Path, competencia: str) -> tuple[pd.DataFrame | None, set[str] | None, Path]:
+    """O que o fechamento do mês anterior (mesma pasta de saída) deixou para este (R18, P33).
+
+    - transações de EC sem contrato, no layout do 01, para faturar se o contrato apareceu;
+    - CNPJs com comissão de checkout, para o alerta de antecipação saber quem tem histórico.
+    Sem fechamento anterior (ex.: setembro, o primeiro), nada muda: (None, None).
+    """
+    pasta = saida / _mes_anterior(competencia) / "latest"
+    pendentes = None
+    if (pasta / NOME_PENDENTES).exists():
+        pendentes = load_orbe(pasta / NOME_PENDENTES).assign(arquivo_origem=ARQUIVO_PENDENTES)
+    cnpjs = None
+    if (pasta / "comissoes_por_lojista.csv").exists():
+        anteriores = pd.read_csv(pasta / "comissoes_por_lojista.csv", sep=";", dtype=str)
+        cnpjs = set(anteriores.loc[anteriores["linha_negocio"] == "CHECKOUT", "cnpj"])
+    return pendentes, cnpjs, pasta
+
+
 def run_closing(
     dados: Path, saida: Path, competencia: str | None = None, condicoes_path: Path | None = None
 ) -> ClosingResult:
@@ -148,10 +172,22 @@ def run_closing(
     }
     commit = _git_commit(dados.parent.parent)
 
+    # R18 + P33: o fechamento anterior (mesma pasta de saída) passa as transações sem contrato guardadas
+    # e os lojistas que já tinham histórico. Entram como mais um arquivo da Orbe, com rastro próprio.
+    pendentes, cnpjs_mes_anterior, pasta_anterior = _historico_anterior(saida, competencia)
+    if pendentes is not None and frentes.roda("checkout", presentes):
+        # A Orbe não repete id entre meses. Se repetir, vale a linha do arquivo do mês e a guardada sai.
+        repetidas = pendentes["id_transacao"].isin(set(sources["orbe"]["id_transacao"]))
+        if repetidas.any():
+            log.warning("%d transações guardadas reaparecem no arquivo do mês; vale a do mês",
+                        int(repetidas.sum()))
+        sources["orbe"] = pd.concat([sources["orbe"], pendentes[~repetidas]], ignore_index=True)
+        hashes[f"{pasta_anterior.parent.name}/{NOME_PENDENTES}"] = _hash(pasta_anterior / NOME_PENDENTES)
+
     t = time.perf_counter()
     caminho_condicoes = condicoes_path or cond_mod.CAMINHO_PADRAO
     condicoes = cond_mod.carregar(caminho_condicoes)
-    r_ck = (checkout.run(sources["orbe"], sources["taxas"], competencia, condicoes)
+    r_ck = (checkout.run(sources["orbe"], sources["taxas"], competencia, condicoes, cnpjs_mes_anterior)
             if frentes.roda("checkout", presentes) else EngineResult())
     t_ck = time.perf_counter() - t
 
@@ -272,6 +308,13 @@ def run_closing(
                        strict=True))
     for nome, df in tabelas.items():
         output.write_output(df, nome, out_dir)
+    # R18: transações de EC sem contrato ficam guardadas para o mês seguinte (só no histórico).
+    sem_contrato_ids = set(rastro.loc[rastro["id_saida"].astype(str).str.startswith("CK-SEMCONTRATO-"),
+                                      "ref_origem"].astype(str)) if not rastro.empty else set()
+    if sem_contrato_ids:
+        orbe = sources["orbe"]
+        escrever_orbe(orbe[orbe["id_transacao"].astype(str).isin(sem_contrato_ids)].drop_duplicates("id_transacao"),
+                      out_dir / NOME_PENDENTES)
     # Só no histórico da execução: saida/ da raiz é só dos 6 CSVs.
     (out_dir / "controle_fechamento.json").write_text(
         json.dumps(relatorio_controle, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -39,13 +39,13 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 | 11 | ✅ Pendência de contestação **Orbe × Rota** (R$ 1.546,28) e **Orbe × Bridge** (R$ 29,95) por lojista, `CONTESTACAO_ORBE`, valor líquido | R1, R16.3, R24.1, R28.1 | **Alex** | Não |
 | 12 | ✅ Alerta de antecipação para lojista sem histórico, pelo pico (Atlas: 15/09, R$ 179.592,82 × R$ 55.357,50) | R16.6, R28.2, R32, P22 | **Alex** | Não |
 | 13 | ✅ Atlas: 1 pendência `SEM_CONTRATO` por lojista (57 transações no rastro) com CNPJ 39566044000119 (só identidade) | R24.1, R30 | **Alex** | Não |
-| 14 | Atlas confirmada depois: outubro puxa as linhas pendentes de setembro | R18 | **Alex** | Não |
+| 14 | ✅ Atlas confirmada depois: transações sem contrato guardadas no histórico e faturadas no mês em que o contrato aparece; EC sem contrato liberado pela planilha; de-para de EC em `config/cadastro_ec.json`; alerta com o fechamento anterior (P33, P34, P35) | R18 | **André** | Não |
 | 15 | Relatório de pendências por quem decide | R1, R24.1 | **Alex** | Não |
 | 16 | ✅ Painel (`python -m tarvo.web`): pendências por quem decide, rastro clicável de todo valor, divergências por natureza, lançamentos, **formulário de condição comercial** e decisão de sinal (grava em `config/condicoes_comerciais.json` e refaz o fechamento), upload dos arquivos do mês | P19, P20, O1 | **Alex** | Não |
 | 17 | ✅ **Layout:** cada loader confere as colunas de que precisa; arquivo com layout diferente não é usado, a frente fica bloqueada e a pendência/faixa do painel dizem o arquivo, a coluna que falta e as que vieram (`tarvo.loaders.layout`) | R34 | **Alex** | — |
 | 18 | ✅ **Arquivo ausente:** fecha as frentes que não dependem dele e gera `FRENTE_BLOQUEADA` (P25). Tela avisa em amarelo o que não vai sair e fecha "o que der"; faixa "Fechamento parcial" no painel | R34 | **Alex** | — |
 
-**Melhoria futura (P22 com histórico):** o alerta de antecipação considera "sem histórico" quem começa a movimentar depois do dia 1 do mês. Em outubro, um lojista antigo sem venda no dia 1 que antecipa acima do vendido pode virar alarme falso. Quando houver o fechamento do mês anterior, trocar por "ausente do fechamento anterior", com o critério atual como reserva (decisão do time em 17/10: manter hoje).
+**Feito (P33):** o alerta de antecipação usa o fechamento do mês anterior para saber quem tem histórico, com a regra da P22 como reserva quando não há fechamento anterior.
 
 A partir das 17h: André confere a saída final contra a `solucao_minimo` (validação independente; essa branch **não** é mergeada).
 
@@ -73,7 +73,7 @@ Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relat�
 - [x] **Estorno de venda divergente** (R16.3: venda e estorno se anulam, cobra só o líquido). Já é o que o motor faz.
 - [x] **Orbe cobrando abaixo do contrato** (R16.7: é divergência, caso a caso; sem caso em setembro).
 - [ ] 🟢 📋 **Alerta de antecipação acima das vendas** (R16.6): Σ antecipado > Σ vendido do lojista no mês → pendência para Financeiro + Comercial.
-- [ ] 🟢 **Atlas confirmada depois** (R18): taxa vale desde 10/09; outubro puxa as linhas pendentes de setembro. Persistir as linhas de EC sem contrato para o próximo fechamento.
+- [x] 🟢 **Atlas confirmada depois** (R18, P34): taxa vale desde 10/09; outubro puxa as linhas pendentes de setembro. Persistir as linhas de EC sem contrato para o próximo fechamento.
 
 ## Remessa
 

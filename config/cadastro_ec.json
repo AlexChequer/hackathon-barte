@@ -1,0 +1,16 @@
+{
+  "_comentario": "Cadastro de EC da Orbe que a planilha de taxas não resolve sozinha (R3). Lido em tempo de execução por tarvo.rules: EC novo confirmado pelo financeiro entra aqui, sem mexer no código. Nunca casar por nome: o CNPJ vem da confirmação citada em 'fonte'.",
+  "ec_para_cnpj": {
+    "1043300981": {"cnpj": "66564512000199", "lojista": "Novo Horizonte Intercâmbio",
+                   "fonte": "R3 (Helena, 16/10 ~20h24)", "aprovado_por": "Financeiro"},
+    "1043396662": {"cnpj": "78576234000179", "lojista": "Horizonte Viagens e Turismo",
+                   "fonte": "R3 (Helena, 16/10 ~20h24)", "aprovado_por": "Financeiro"},
+    "1038867654": {"cnpj": "07752116000126", "lojista": "Kiwi Experience",
+                   "fonte": "R3 (Helena, 16/10 ~20h24)", "aprovado_por": "Financeiro"}
+  },
+  "_comentario_sem_contrato": "EC sem contrato vigente (R3, P10): não fatura e vira pendência para o Comercial ENQUANTO a planilha de taxas não tiver linha vigente para o EC ou o CNPJ. Quando o Comercial confirmar e a planilha ganhar a linha, o EC passa a faturar sem mexer aqui (R18). O CNPJ é só identidade (R30).",
+  "ec_sem_contrato": {
+    "1076801732": {"cnpj": "39566044000119", "nome": "Atlas Idiomas Ltda",
+                   "fonte": "R3 (não fatura) + R30 (CNPJ da aba ANTIGO 2025, só identidade)"}
+  }
+}

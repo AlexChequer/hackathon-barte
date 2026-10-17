@@ -90,7 +90,7 @@ data/raw/<mês>/  →  loaders  →  motores (checkout · remessa · extratos ·
    - **Remessa:** 50% do spread realizado, por operação. Duplicata conta uma vez. Spread negativo fica fora e vira contestação.
    - **Extratos:** classificação por regra sobre a descrição, sempre pela contrapartida.
    - **Sinais:** lê obs e comentários da planilha procurando condições comerciais escondidas.
-3. **Regras** (`src/tarvo/rules.py`, `config/condicoes_comerciais.json`): cada uma cita a resposta do financeiro (R#) ou a premissa (P#) de `HIPOTESES.md`. Condições comerciais registram quem aprovou e quando.
+3. **Regras** (`src/tarvo/rules.py`, `config/condicoes_comerciais.json`, `config/cadastro_ec.json`): cada uma cita a resposta do financeiro (R#) ou a premissa (P#) de `HIPOTESES.md`. Condições comerciais registram quem aprovou e quando.
 4. **Orquestrador** (`src/tarvo/orquestrador.py`): roda as frentes que os arquivos permitem, valida e grava. Registra cada execução no SQLite e marca para reavaliar as decisões tomadas sobre dados ou regras que mudaram depois.
 
 ### Rodar os testes
@@ -119,7 +119,7 @@ O front fica em `web/` (React + TypeScript + Vite + Tailwind + motion) e já vai
 
 ## Limitações conhecidas
 
-- **Atlas confirmada depois (R18):** quando o comercial confirmar a taxa, outubro precisa puxar as 57 transações de setembro. Hoje isso não é automático: elas ficam na pendência, identificadas pelo CNPJ.
+- **Memória entre meses (R18, P33, P34):** outubro relê as transações sem contrato e os lojistas de setembro a partir do histórico de `saida/<competência>/`. Isso só funciona se os dois meses forem fechados na mesma pasta de saída (o histórico não vai para o git).
 - **Provisão de folha e impostos do próprio mês:** não é gerada; o pacote não traz os valores.
 - **Colunas extras** além das pedidas: `causa_divergencia` nas divergências, `motivo` nos lançamentos e `metadata` no rastro. As colunas obrigatórias estão todas presentes, na ordem pedida.
 - **Numeração das linhas do Aurora:** conta a partir de 1, então a primeira transação é a `L9` (P1, não confirmada com a organização).

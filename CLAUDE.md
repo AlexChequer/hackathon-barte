@@ -25,7 +25,7 @@ python -m tarvo.web --dados data/raw/set2026   # painel web fino sobre o mesmo m
 
 - `src/tarvo/parse.py`: parsers pt-BR (número, taxa, data, CNPJ)
 - `src/tarvo/loaders/`: um loader por arquivo do data pack
-- `src/tarvo/rules.py`: constantes de negócio (de-para R3, Casa R6, vigências)
+- `src/tarvo/rules.py`: constantes de negócio; de-para de EC (R3) em `config/cadastro_ec.json`, condições comerciais (R6) em `config/condicoes_comerciais.json`
 - `src/tarvo/engines/`: motores por entregável (checkout, remessa, extratos)
 - `src/tarvo/orquestrador.py`: cola motores + rastro + validação
 - `src/tarvo/output.py`: schemas e escrita de `saida/`

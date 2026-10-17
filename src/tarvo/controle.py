@@ -15,6 +15,7 @@ from decimal import Decimal
 
 import pandas as pd
 
+from tarvo.loaders.orbe import ARQUIVO_PENDENTES
 from tarvo.money import ZERO, q, sum_q
 
 # Orbe: em que parte do fechamento o valor cobrado de cada transação foi parar. A ordem importa
@@ -33,7 +34,8 @@ COMPONENTES_ORBE = (
 )
 # Saídas que detalham, repetem ou alertam sobre números já contados acima.
 DERIVADAS_ORBE = ("CK-COND-", "CK-NT-", "CK-NTNEG-", "CK-NTZERO-", "CK-CONTEST-", "CK-ALERTA-ANT-")
-ARQUIVOS_ORBE = ("orbe", "orbe_ajustes")
+# Arquivos da Orbe: o relatório, os ajustes tardios e as transações guardadas de meses anteriores (R18).
+ARQUIVOS_ORBE = ("orbe", "orbe_ajustes", ARQUIVO_PENDENTES)
 # A Orbe trunca (até -0,01) e a Tarvo arredonda comissão e divergência separadas (até ±0,005 cada).
 TOLERANCIA_ORBE_POR_TRANSACAO = Decimal("0.02")
 

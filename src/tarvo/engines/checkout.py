@@ -23,6 +23,7 @@ from tarvo.engines.checkout_pendencias import (
     pendencias_contestacao_orbe,
     pendencias_sem_contrato,
 )
+from tarvo.loaders.orbe import ARQUIVO_PENDENTES
 from tarvo.money import ZERO, brl, pct, pct_br, q, q_mul, sum_q
 
 ARQUIVO_ORBE = "orbe"
@@ -104,7 +105,29 @@ def build_taxas_registry(taxas: pd.DataFrame) -> dict[str, list[LojistaTaxas]]:
     for ec, cnpj in rules.EC_PARA_CNPJ.items():
         for _, r in taxas[taxas["cnpj"] == cnpj].iterrows():
             registry.setdefault(ec, []).append(_row_to_entry(r))
+    # R18: EC sem contrato passa a ter contrato quando a planilha ganha a linha dele, pelo EC ou pelo
+    # CNPJ de identidade (R30). A linha da planilha é o contrato confirmado pelo Comercial.
+    for ec, cadastro in rules.EC_SEM_CONTRATO.items():
+        if ec in registry or not cadastro.get("cnpj"):
+            continue
+        for _, r in taxas[taxas["cnpj"] == cadastro["cnpj"]].iterrows():
+            registry.setdefault(ec, []).append(_row_to_entry(r))
     return registry
+
+
+def _retroativo(tx: pd.Series) -> bool:
+    """Transação guardada de um mês anterior (EC estava sem contrato), relida neste fechamento (R18)."""
+    return tx.get("arquivo_origem") == ARQUIVO_PENDENTES
+
+
+def _contrato_confirmado(entries: list[LojistaTaxas]) -> LojistaTaxas:
+    """Linha do contrato que vale para vendas anteriores à vigência registrada (R18): a mais antiga."""
+    return min(entries, key=lambda e: e.vigencia_inicio or dt.date.min)
+
+
+def _sem_contrato(registry: dict[str, list[LojistaTaxas]]) -> set[str]:
+    """ECs cadastrados como sem contrato que ainda não têm linha na planilha (R3, P10, R18)."""
+    return {ec for ec in rules.EC_SEM_CONTRATO if not registry.get(ec)}
 
 
 def _cnpj_por_ec(registry: dict[str, list[LojistaTaxas]]) -> dict[str, str]:
@@ -245,8 +268,15 @@ def run(
     taxas: pd.DataFrame,
     competencia: str,
     condicoes: tuple[cond_mod.Condicao, ...] | None = None,
+    cnpjs_mes_anterior: set[str] | None = None,
 ) -> EngineResult:
+    """`cnpjs_mes_anterior`: lojistas do fechamento de checkout anterior (P22); None = sem histórico.
+
+    Linhas com `arquivo_origem == ARQUIVO_PENDENTES` são transações de meses anteriores que ficaram sem
+    contrato: faturam neste mês se o contrato apareceu (R18) ou seguem na pendência.
+    """
     registry = build_taxas_registry(taxas)
+    sem_contrato = _sem_contrato(registry)
     if condicoes is None:
         condicoes = cond_mod.carregar()
     result = EngineResult()
@@ -259,13 +289,15 @@ def run(
         if tx["tipo_lancamento"] != "ANTECIPACAO":
             continue
         ec = str(tx["cod_estabelecimento"])
-        if ec in rules.EC_SEM_CONTRATO:
+        if ec in sem_contrato:
             continue
         entries = registry.get(ec)
         if not entries:
             continue
         data_regra = _data_vigencia(tx)
         entry = _row_vigente(entries, data_regra) if data_regra else entries[-1]
+        if entry is None and _retroativo(tx):
+            entry = _contrato_confirmado(entries)
         if entry is None:
             continue
         # Mesma taxa da passada principal: inclui condição comercial vigente (P19; ex.: Casa 0%).
@@ -292,13 +324,16 @@ def run(
         data_regra = _data_vigencia(tx)
 
         # EC sem contrato (R3/P10/R30): não fatura, não inventa taxa; agrega por lojista no fim.
-        if ec in rules.EC_SEM_CONTRATO:
+        if ec in sem_contrato:
             sem_contrato_tx.append(tx)
             continue
+        retroativo = _retroativo(tx)
 
         # Competência: a venda cai no mês da data_movimento; estorno cai no mês do estorno (R2/R29).
         # Linha com data fora da competência não deveria estar neste lote: pendência para o Financeiro.
-        if not _dentro_competencia(data_tx, competencia):
+        # Exceção: transação de mês anterior guardada sem contrato fatura agora (R18: "faturo setembro
+        # junto com outubro").
+        if not retroativo and not _dentro_competencia(data_tx, competencia):
             pendencias_tx.append({
                 "id": f"CK-FORA-{tx['id_transacao']}",
                 "tipo": "FORA_COMPETENCIA",
@@ -333,6 +368,10 @@ def run(
             continue
 
         entry = _row_vigente(entries, data_regra) if data_regra else entries[-1]
+        if entry is None and retroativo:
+            # R18: "a taxa vale desde o começo". A venda é anterior à vigência registrada do contrato
+            # confirmado, e vale a taxa dele (confirmada pelo Comercial, não inventada).
+            entry = _contrato_confirmado(entries)
         if entry is None:
             pendencias_tx.append({
                 "id": f"CK-VIG-{tx['id_transacao']}",
@@ -393,6 +432,7 @@ def run(
                 "linha_planilha": entry.linha_planilha,
                 "contratada_fonte": "antecipacao_original",
                 "condicao_id": None,
+                "retroativo": retroativo,
                 "produto": taxa.coluna,
                 "data_referencia": data_regra,
             })
@@ -434,6 +474,7 @@ def run(
             "contratada_fonte": "condicao" if taxa.condicao else "planilha",
             "condicao_id": taxa.condicao.id if taxa.condicao else None,
             "valor_bruto": valor_bruto,
+            "retroativo": retroativo,
             "produto": taxa.coluna,
             "data_referencia": data_regra,
         })
@@ -470,7 +511,8 @@ def run(
                     "arquivo_origem": ARQUIVO_ORBE,
                     "ref_origem": tx["id_transacao"],
                     "valor": tx["comissao"],
-                    "metadata": f"tipo={tx['tipo']},taxa_contratada={pct(tx['taxa_contratada'])}",
+                    "metadata": (f"tipo={tx['tipo']},taxa_contratada={pct(tx['taxa_contratada'])}"
+                                 + (",retroativo_R18" if tx.get("retroativo") is True else "")),
                 })
 
             # Nota (R4/P11): só com saldo > 0. Saldo 0 por Casa isenta = sem nota sem pendência.
@@ -584,7 +626,8 @@ def run(
     result.notas = pd.DataFrame(notas_rows)
     sc_rastro, sc_pend = pendencias_sem_contrato(sem_contrato_tx, competencia)
     tx_mes = [tx for tx in deduped if _dentro_competencia(tx.get("data_movimento"), competencia)]
-    al_rastro, al_pend = alertas_antecipacao(tx_mes, _cnpj_por_ec(registry), competencia)
+    al_rastro, al_pend = alertas_antecipacao(tx_mes, _cnpj_por_ec(registry), competencia, sem_contrato,
+                                             cnpjs_mes_anterior)
     sc_rastro, sc_pend = sc_rastro + al_rastro, sc_pend + al_pend
     rastro_rows.extend(sc_rastro)
     pendencias_cond = pendencias_cond + sc_pend

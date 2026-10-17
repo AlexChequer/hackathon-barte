@@ -189,12 +189,15 @@ def test_orquestrador_end_to_end_sem_problemas(tmp_path):
     r = run_closing(DATA, tmp_path, "2026-09")
     assert r.problemas_rastro.empty
     assert r.problemas_integridade == []
-    # 6 arquivos escritos.
-    arquivos = {p.name for p in r.out_dir.iterdir() if p.suffix == ".csv"}
-    assert arquivos == {
+    # 6 arquivos escritos na raiz (a entrega). O histórico guarda também as transações sem contrato
+    # para o mês seguinte (R18), que nunca vão para a raiz.
+    seis = {
         "comissoes_por_lojista.csv", "divergencias_taxa.csv", "notas_a_emitir.csv",
         "lancamentos_classificados.csv", "pendencias.csv", "rastro.csv",
     }
+    assert {p.name for p in tmp_path.iterdir() if p.suffix == ".csv"} == seis
+    historico = {p.name for p in r.out_dir.iterdir() if p.suffix == ".csv"}
+    assert historico == seis | {"pendentes_sem_contrato.csv"}
 
 
 def test_reprocessamento_idempotente_mesma_execucao_cria_nova_linha(tmp_path):

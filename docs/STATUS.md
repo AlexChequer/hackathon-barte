@@ -13,9 +13,9 @@ Comece aqui. **Falta para fechar: `docs/FECHAMENTO_FINAL.md`.** **Painel:** `pyt
 | | + lançamentos classificados no plano de contas | ✅ 184/184 por regra, contrapartida (R9), só contas analíticas |
 | **Extra** | + pendências com motivo e quem decide | ✅ 16 pendências agregadas por contraparte e lojista (R24.1), cada uma com motivo, fonte (R#), dono e **próximo passo** (coluna `proximo_passo`, P29), valores em pt-BR no texto (P30) |
 | | + rastro completo | ✅ soma exata por `id_saida` + cobertura (toda linha de entrada aparece em alguma saída) + toda linha do rastro aponta uma linha que existe no arquivo (P28) + cada fonte fecha contra o próprio total em `controle_fechamento.json` (Orbe, Ponte, Aurora, Meridiano) |
-| | + roda em outubro sem retrabalho | ⚠️ nada fixo de setembro, competência inferida, condições comerciais e sinais versionados. **Falta:** arquivo ausente e layout novo (R34), Atlas confirmada depois (R18), ajuste da Ponte (R27) |
-| **Entrega** | `saida/` com os 6 CSVs | ❌ **bloqueia**: hoje ficam em `saida/2026-09/exec_*` e `saida/` está no `.gitignore` (gap 1) |
-| | README que diz como rodar | ❌ **bloqueia** (gap 2) |
+| | + roda em outubro sem retrabalho | ✅ nada fixo de setembro, competência inferida, condições comerciais, sinais e de-para de EC em configuração (P35), arquivo ausente e layout novo (R34), ajuste da Ponte (R27, P31), Atlas confirmada depois (R18, P34), alerta com histórico do mês anterior (P33). Testado com outubro sintético e com setembro → outubro na mesma pasta |
+| **Entrega** | `saida/` com os 6 CSVs | ✅ na raiz de `saida/`, versionados (gap 1) |
+| | README que diz como rodar | ✅ (gap 2) |
 | | `HIPOTESES.md`, `PROMPTS/MOMENTOS.md` | ✅ (5 momentos, 4 com erro da IA) · ❌ export dos prompts das sessões |
 
 ## A solução em uma frase
@@ -53,7 +53,7 @@ Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R10/R12/R24.1 pendência de contestação por contraparte e lojista | ✅ Orbe × Rota, Orbe × Bridge, Tarvo × Casa, Ponte × Mundo Aberto, duplicata para corrigir o relatório |
 | R11/R12 `quem_decide` das pendências da Ponte = Financeiro | ✅ |
 | R16.6/R28.2/R32 alerta de antecipação só para lojista sem histórico (P22) | ✅ Atlas, pelo pico |
-| R18 Atlas confirmada depois: outubro puxa as linhas de setembro | ❌ |
+| R18 Atlas confirmada depois: outubro puxa as linhas de setembro | ✅ transações sem contrato guardadas no histórico e faturadas no mês em que o contrato aparece (P34), testado setembro → outubro |
 | R24.3 venda acima de 12x → pendência | ✅ (`SEM_TAXA_CONTRATADA`) |
 | R26 `saida/` com os 6 CSVs de setembro **na raiz** | ✅ |
 | R27 ajuste de contestação da Ponte no mês seguinte (P21) | ✅ 50% do spread cheio (P31, aguardando a Helena), testado no outubro sintético; mês ≤ 0 vira pendência (P32) |
