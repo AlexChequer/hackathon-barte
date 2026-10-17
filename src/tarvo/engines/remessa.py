@@ -82,7 +82,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                     "arquivo_origem": ARQUIVO_PONTE,
                     "valor_brl": q(linha["spread_brl"] or ZERO),
                     "motivo": f"{n_op} aparece com dados financeiros divergentes entre linhas.",
-                    "quem_decide": "Ponte Câmbio",
+                    "quem_decide": "Financeiro",  # R11/R12: Helena decide; a Ponte só recebe a contestação
                     "cnpj": linha["cnpj"],
                     "linha_negocio": "REMESSA",
                 })
@@ -129,7 +129,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                     f"Operação {n_op} ({cliente}) sem spread R$ no relatório da Ponte;"
                     " não dá para apurar comissão sem o valor."
                 ),
-                "quem_decide": "Ponte Câmbio",
+                "quem_decide": "Financeiro",  # R11/R12: Helena decide; a Ponte só recebe a contestação
                 "cnpj": cnpj,
                 "linha_negocio": "REMESSA",
             })
@@ -148,7 +148,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 "arquivo_origem": ARQUIVO_PONTE,
                 "valor_brl": q(spread_brl),
                 "motivo": f"Operação {n_op} com status compliance '{status}' não previsto.",
-                "quem_decide": "Ponte Câmbio",
+                "quem_decide": "Financeiro",  # R11/R12: Helena decide; a Ponte só recebe a contestação
                 "cnpj": cnpj,
                 "linha_negocio": "REMESSA",
             })
@@ -281,7 +281,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
                 f"nota ({total_nota}). Fontes da diferença: duplicatas resolvidas em 1× "
                 "e os 4 negativos excluídos (R5/P12)."
             ),
-            "quem_decide": "Ponte Câmbio",
+            "quem_decide": "Financeiro",  # R11/R12: Helena decide; a Ponte só recebe a contestação
             "cnpj": rules.PONTE_CNPJ,
             "linha_negocio": "REMESSA",
         })

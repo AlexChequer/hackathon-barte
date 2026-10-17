@@ -256,11 +256,15 @@ def run(
             continue
         data_regra = _data_vigencia(tx)
         entry = _row_vigente(entries, data_regra) if data_regra else entries[-1]
-        if entry is None or entry.antecipacao is None:
+        if entry is None:
+            continue
+        # Mesma taxa da passada principal: inclui condição comercial vigente (P19; ex.: Casa 0%).
+        contratada = _taxa_contratada(entry, tx, data_regra, condicoes).contratada
+        if contratada is None:
             continue
         bruto = tx["valor_bruto"] if isinstance(tx["valor_bruto"], Decimal) \
             else Decimal(str(tx["valor_bruto"]))
-        comissao_antecipacao[tx["id_transacao"]] = q_mul(bruto, entry.antecipacao)
+        comissao_antecipacao[tx["id_transacao"]] = q_mul(bruto, contratada)
 
     linhas_tx: list[dict] = []  # cada tx vira "contribuicao" de comissao + info de divergência
     sem_contrato_tx: list[pd.Series] = []

@@ -92,3 +92,19 @@ def test_casa_nao_entra_na_contestacao_da_orbe(res):
 def test_contestacao_usa_o_nome_canonico_do_lojista(res):
     pend = res.pendencias[res.pendencias["ref_origem"] == "22224579000109"]
     assert pend["motivo"].iloc[0].startswith("Escola Bridge de Idiomas Ltda")
+
+
+def test_reversao_de_antecipacao_isenta_anula_zero_e_nao_a_taxa_da_planilha(sources):
+    """P13 + P19: a reversão anula a comissão da antecipação original, que na Casa é 0 (condição)."""
+    import pandas as pd
+
+    orbe = sources["orbe"]
+    antecipacao = orbe[(orbe["cod_estabelecimento"].astype(str) == "1018325654")
+                       & (orbe["tipo_lancamento"] == "ANTECIPACAO")].iloc[0]
+    reversao = antecipacao.copy()
+    reversao["id_transacao"], reversao["tipo_lancamento"] = "AN-REV-TESTE", "REVERSAO ANTECIPACAO"
+    reversao["id_referencia"], reversao["linha_origem"] = antecipacao["id_transacao"], 99999
+    reversao["valor_bruto"], reversao["valor_taxa"] = -antecipacao["valor_bruto"], -antecipacao["valor_taxa"]
+    res = ck.run(pd.concat([orbe, pd.DataFrame([reversao])], ignore_index=True), sources["taxas"], "2026-09")
+    casa = res.comissoes[res.comissoes["cnpj"] == CASA_CNPJ]
+    assert casa["comissao_brl"].iloc[0] == Decimal("-5.50")

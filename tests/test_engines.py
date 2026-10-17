@@ -322,7 +322,7 @@ def test_remessa_spread_ausente_vira_pendencia(sources):
     res = rm.run(ponte, sources["taxas"], "2026-09")
     ausente = res.pendencias[res.pendencias["tipo"] == "SPREAD_AUSENTE"]
     assert len(ausente) == 1
-    assert ausente["quem_decide"].iloc[0] == "Ponte Câmbio"
+    assert ausente["quem_decide"].iloc[0] == "Financeiro"  # R11, R12: Helena decide
 
 
 def test_remessa_agrupa_por_cnpj_mesmo_com_nome_variando(sources):
