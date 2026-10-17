@@ -28,7 +28,7 @@ Fonte da situação de cada regra: `docs/STATUS.md`, seção "Regras do financei
 |---|---|---|---|---|
 | 1 | ✅ Os 6 CSVs do último fechamento são gravados também na raiz de `saida/` e versionados (histórico, uploads e SQLite fora do git). **Antes do último commit, rodar `python -m tarvo --dados data/raw/set2026` e commitar `saida/*.csv`** | R26, O1 | **Alex** | — |
 | 2 | ✅ README completo (um comando, sem chave de API, painel, outro mês, saídas, garantias, limitações) | O1 | **Alex** | — |
-| 3 | Perguntar à organização: colunas extras (`rastro.metadata`, `lancamentos.motivo`) e L9 × L10 do Aurora | P1 | **André** | Talvez |
+| 3 | Perguntar à organização: ~~colunas extras~~ (respondida no R36: podem ficar) e L9 × L10 do Aurora (ainda aberta) | P1 | **André** | Talvez |
 | 4 | ✅ Lançamento que abre pendência (L50, L65, L92) sai com `confianca` 0,50: conta pela regra, provisória até a pendência ser resolvida. ⚠️ Não feito: marcar o PIX `MRD2026090425` como "remessa de outubro" (os PIX cobrem várias operações somadas; casar por soma tem risco de falso alarme). A conta dele já está certa (2.1.02.001, R16.5) | R6, R16.5 | **Alex** | — |
 | 5 | Provisão de folha/impostos de setembro (aguarda resposta à Datarmos) | R19 | **André** | Não |
 | 6 | ✅ Pendência de contestação **Ponte × Mundo Aberto** por lojista, 23 operações no rastro | R10, R12, R24.1 | **Helio** | Não |

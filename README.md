@@ -121,5 +121,5 @@ O front fica em `web/` (React + TypeScript + Vite + Tailwind + motion) e já vai
 
 - **Memória entre meses (R18, P33, P34):** outubro relê as transações sem contrato e os lojistas de setembro a partir do histórico de `saida/<competência>/`. Isso só funciona se os dois meses forem fechados na mesma pasta de saída (o histórico não vai para o git).
 - **Provisão de folha e impostos do próprio mês:** não é gerada; o pacote não traz os valores.
-- **Colunas extras** além das pedidas: `causa_divergencia` nas divergências, `motivo` nos lançamentos e `metadata` no rastro. As colunas obrigatórias estão todas presentes, na ordem pedida.
+- **Colunas extras** além das pedidas: `causa_divergencia` nas divergências, `motivo` nos lançamentos e `metadata` no rastro. As colunas obrigatórias estão todas presentes, na ordem pedida, e a Helena confirmou que coluna extra não atrapalha (R36).
 - **Numeração das linhas do Aurora:** conta a partir de 1, então a primeira transação é a `L9` (P1, não confirmada com a organização).
