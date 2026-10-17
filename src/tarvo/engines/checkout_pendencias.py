@@ -10,6 +10,8 @@ Cada pendência tem rastro por transação; o detalhe fica em `divergencias_taxa
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pandas as pd
 
 from tarvo import rules
@@ -62,6 +64,12 @@ def pendencias_contestacao_orbe(linhas_df: pd.DataFrame, competencia: str) -> tu
     return rastro, pendencias
 
 
+def _devolucao(tx: pd.Series) -> Decimal:
+    """R33: devolve o que saiu do bolso do lojista (valor_taxa da Orbe) menos a comissão contratada,
+    sem a parte que é erro da própria Orbe (essa vai na contestação, CK-DIV)."""
+    return tx["valor_taxa_orbe"] - tx["comissao"] - tx["divergencia"]
+
+
 def divergencias_condicao(
     linhas_df: pd.DataFrame, condicoes: tuple[Condicao, ...], competencia: str
 ) -> tuple[list[dict], list[dict], list[dict]]:
@@ -86,12 +94,14 @@ def divergencias_condicao(
                 "taxa_aplicada_pct": pct(tx["taxa_planilha"]),
                 "diferenca_brl": tx["divergencia_condicao"],
             })
-            for id_saida, meta in [(div_id, f"divergencia_condicao;{tx['condicao_id']}"),
-                                   (pend_id, f"pendencia_CONDICAO_NAO_INFORMADA_ORBE;{tx['condicao_id']}")]:
-                rastro.append({"id_saida": id_saida, "arquivo_origem": ARQUIVO_ORBE,
-                               "ref_origem": tx["id_transacao"], "valor": tx["divergencia_condicao"],
-                               "metadata": meta})
-        total = sum_q(grupo["divergencia_condicao"])
+            rastro.append({"id_saida": div_id, "arquivo_origem": ARQUIVO_ORBE,
+                           "ref_origem": tx["id_transacao"], "valor": tx["divergencia_condicao"],
+                           "metadata": f"divergencia_condicao;{tx['condicao_id']}"})
+            rastro.append({"id_saida": pend_id, "arquivo_origem": ARQUIVO_ORBE,
+                           "ref_origem": tx["id_transacao"], "valor": _devolucao(tx),
+                           "metadata": f"pendencia_CONDICAO_NAO_INFORMADA_ORBE;{tx['condicao_id']}"})
+        total = sum_q(_devolucao(tx) for _, tx in grupo.iterrows())
+        formula = sum_q(grupo["divergencia_condicao"])
         conds = [por_id[c] for c in sorted(set(grupo["condicao_id"]))]
         fontes = "; ".join(f"{c.id} ({c.fonte}, aprovado por {c.aprovado_por})" for c in conds)
         pendencias.append({
@@ -102,7 +112,8 @@ def divergencias_condicao(
             "motivo": (
                 f"{nome_lojista(linhas_df[linhas_df['cnpj'] == cnpj])}: a Orbe cobrou a taxa da planilha em "
                 f"{len(grupo)} transações, "
-                f"mas vale condição comercial registrada fora dela ({fontes}). Devolver {total} ao lojista; "
+                f"mas vale condição comercial registrada fora dela ({fontes}). Devolver {total} ao lojista "
+                f"(o que a Orbe descontou de fato, R33; pela fórmula da divergência: {formula}); "
                 "não cobrar da Orbe (R16.1, R22). Atualizar a planilha e avisar a Orbe. "
                 "Detalhe por transação: linhas CK-COND-* em divergencias_taxa."
             ),
@@ -143,5 +154,71 @@ def pendencias_sem_contrato(transacoes: list[pd.Series], competencia: str) -> tu
                 f"mês seguinte (R3, R18). Fonte do CNPJ: {cadastro['fonte']}."
             ),
             "quem_decide": "Comercial",
+        })
+    return rastro, pendencias
+
+
+def _sem_historico(ec: str, txs: pd.DataFrame, competencia: str, ecs_com_contrato: set[str]) -> bool:
+    """P22: primeira movimentação depois do 1º dia do mês, ou EC sem contrato vigente."""
+    primeiro_dia = f"{competencia}-01"
+    return ec not in ecs_com_contrato or txs["data_movimento"].min().isoformat() > primeiro_dia
+
+
+def alertas_antecipacao(
+    transacoes: list[pd.Series], cnpj_por_ec: dict[str, str], competencia: str
+) -> tuple[list[dict], list[dict]]:
+    """R16.6 + R28.2 + R32 (P22): lojista sem histórico com antecipado acumulado > vendido acumulado.
+
+    Conta o pico: o risco existiu no dia em que o dinheiro foi adiantado; reversões posteriores
+    vão no motivo. Valor = total antecipado no mês, com as antecipações no rastro.
+    """
+    if not transacoes:
+        return [], []
+    df = pd.DataFrame(transacoes)
+    df["ec"] = df["cod_estabelecimento"].astype(str)
+    com_contrato = set(cnpj_por_ec) - set(rules.EC_SEM_CONTRATO)
+    rastro, pendencias = [], []
+    for ec, txs in df.groupby("ec", sort=True):
+        antecipacoes = txs[txs["tipo_lancamento"] == "ANTECIPACAO"].sort_values("data_movimento")
+        if antecipacoes.empty or not _sem_historico(ec, txs, competencia, com_contrato):
+            continue
+        vendas = txs[txs["tipo_lancamento"] == "VENDA"]
+        pico = None
+        for data in sorted(set(antecipacoes["data_movimento"])):
+            ate_a_data = antecipacoes[antecipacoes["data_movimento"] <= data]
+            antecipado = sum_q(q(v) for v in ate_a_data["valor_bruto"])
+            vendido = sum_q(q(v) for v in vendas[vendas["data_movimento"] <= data]["valor_bruto"])
+            if antecipado > vendido:
+                pico = (data, antecipado, vendido)
+                break
+        if pico is None:
+            continue
+        chave = cnpj_por_ec.get(ec) or f"EC{ec}"
+        pend_id = f"CK-ALERTA-ANT-{competencia}-{chave}"
+        valores = [q(v) for v in antecipacoes["valor_bruto"]]
+        for (_, tx), valor in zip(antecipacoes.iterrows(), valores, strict=True):
+            rastro.append({"id_saida": pend_id, "arquivo_origem": ARQUIVO_ORBE,
+                           "ref_origem": tx["id_transacao"], "valor": valor,
+                           "metadata": "pendencia_ALERTA_ANTECIPACAO"})
+        reversoes = txs[(txs["tipo_lancamento"] == "REVERSAO ANTECIPACAO")
+                        & txs["id_referencia"].isin(set(antecipacoes["id_transacao"]))]
+        rev_txt = ", ".join(
+            f"{r['id_transacao']} em {r['data_movimento']:%d/%m} (reverte {r['id_referencia']})"
+            for _, r in reversoes.iterrows()
+        ) or "nenhuma"
+        total = sum_q(valores)
+        data, antecipado, vendido = pico
+        pendencias.append({
+            "id": pend_id,  # rastro já emitido por antecipação; não passa pelo laço genérico
+            "tipo": "ALERTA_ANTECIPACAO",
+            "ref_origem": chave,
+            "valor_brl": total,
+            "motivo": (
+                f"{txs['nome_estabelecimento'].iloc[0]} (EC {ec}) sem histórico (primeira movimentação "
+                f"em {txs['data_movimento'].min():%d/%m}) antecipou mais do que vendeu: em {data:%d/%m}, "
+                f"{antecipado} antecipados × {vendido} vendidos no mês. Total antecipado no mês {total}; "
+                f"reversões depois: {rev_txt}. Alerta para o Financeiro e o Comercial (R16.6, R28.2, R32)."
+            ),
+            "quem_decide": "Financeiro + Comercial",
         })
     return rastro, pendencias

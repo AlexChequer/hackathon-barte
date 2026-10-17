@@ -30,13 +30,13 @@ Validação: 68 testes, `ruff` limpo, referência manual 14/14, e a implementaç
 | R3/R30 mapa de ECs por CNPJ; Atlas não fatura | ✅ Atlas fora de comissões (P24), 1 pendência com CNPJ 39566044000119 (só identidade) |
 | R4 1 nota por lojista; ≤ 0 sem nota + pendência; 1 nota Ponte | ✅ |
 | R5/R15 remessa 50% do realizado; negativo fora; duplicata 1×; padrão 1,5% | ✅ negativos por regra geral, sem ids fixos |
-| R6/R16.1/R22/R28.1 Casa = concessão fora do contrato → devolução, fora da cobrança da Orbe | ✅ `CK-COND` + pendência; fonte única `config/condicoes_comerciais.json` |
+| R6/R16.1/R22/R28.1/R33 Casa = concessão fora do contrato → devolução do que a Orbe descontou de fato (R$ 15.396,77), fora da cobrança da Orbe | ✅ `CK-COND` (fórmula, R$ 15.397,42) + pendência; fonte única `config/condicoes_comerciais.json` |
 | R6 extratos: PIX sem id, devolução, transferência em trânsito | ✅ trânsito por cruzamento dos bancos, sem data fixa |
 | R7/P7 divergência de remessa cheia, tolerância 0,01 p.p. | ✅ |
 | R9/R19/R25 contrapartida; provisão baixa no mês seguinte | ✅ |
 | R10/R12/R24.1 pendência de contestação por contraparte e lojista | ✅ Orbe × Rota, Orbe × Bridge, Tarvo × Casa · ❌ Ponte × Mundo Aberto, duplicata (Helio) |
 | R11/R12 `quem_decide` das pendências da Ponte = Financeiro | ✅ |
-| R16.6/R28.2 alerta de antecipação só para lojista sem histórico (P22) | ❌ |
+| R16.6/R28.2/R32 alerta de antecipação só para lojista sem histórico (P22) | ✅ Atlas, pelo pico |
 | R18 Atlas confirmada depois: outubro puxa as linhas de setembro | ❌ |
 | R24.3 venda acima de 12x → pendência | ✅ (`SEM_TAXA_CONTRATADA`) |
 | R26 `saida/` com os 6 CSVs de setembro **na raiz** | ❌ hoje vai para `saida/2026-09/exec_*` |

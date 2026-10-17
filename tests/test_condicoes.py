@@ -51,7 +51,7 @@ def test_uma_pendencia_por_lojista_com_total_e_rastro_por_transacao(res):
     pend = res.pendencias[res.pendencias["tipo"] == "CONDICAO_NAO_INFORMADA_ORBE"]
     assert len(pend) == 1
     linha = pend.iloc[0]
-    assert linha["valor_brl"] == Decimal("15397.42")
+    assert linha["valor_brl"] == Decimal("15396.77")  # R33: o que a Orbe descontou de fato
     assert "Comercial" in linha["quem_decide"]
     rastro = res.rastro[res.rastro["id_saida"] == linha["id_saida"]]
     assert len(rastro) == 118
@@ -108,3 +108,16 @@ def test_reversao_de_antecipacao_isenta_anula_zero_e_nao_a_taxa_da_planilha(sour
     res = ck.run(pd.concat([orbe, pd.DataFrame([reversao])], ignore_index=True), sources["taxas"], "2026-09")
     casa = res.comissoes[res.comissoes["cnpj"] == CASA_CNPJ]
     assert casa["comissao_brl"].iloc[0] == Decimal("-5.50")
+
+
+def test_alerta_de_antecipacao_so_para_lojista_sem_historico(res):
+    """R16.6 + R28.2 + R32 (P22): pelo pico, só lojista novo. Em setembro, só a Atlas."""
+    alertas = res.pendencias[res.pendencias["tipo"] == "ALERTA_ANTECIPACAO"]
+    assert list(alertas["ref_origem"]) == ["39566044000119"]
+    linha = alertas.iloc[0]
+    assert linha["valor_brl"] == Decimal("235943.10")
+    assert linha["quem_decide"] == "Financeiro + Comercial"
+    assert "179592.82" in linha["motivo"] and "55357.50" in linha["motivo"]
+    assert "AN88446030" in linha["motivo"]  # reversão citada
+    rastro = res.rastro[res.rastro["id_saida"] == linha["id_saida"]]
+    assert len(rastro) == 5 and sum(rastro["valor"]) == linha["valor_brl"]
