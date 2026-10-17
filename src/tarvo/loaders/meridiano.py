@@ -6,17 +6,23 @@ from pathlib import Path
 import pandas as pd
 
 from tarvo import parse
+from tarvo.loaders.layout import LayoutInvalido, exigir
 
 ENCODING = "cp1252"
 BLOCK = re.compile(r"<STMTTRN>(.*?)</STMTTRN>", re.S)
 TAG = re.compile(r"<(\w+)>([^<\r\n]*)")
+TAG_NOME = re.compile(r"<(\w+)>")
 
 
 def load_meridiano(path: Path) -> pd.DataFrame:
     text = path.read_text(encoding=ENCODING)
+    blocos = BLOCK.findall(text)
+    if not blocos:
+        raise LayoutInvalido(path, ["<STMTTRN>"], sorted(set(TAG_NOME.findall(text)))[:20])
     records = []
-    for block in BLOCK.findall(text):
+    for block in blocos:
         tags = {k: v.strip() for k, v in TAG.findall(block)}
+        exigir(path, tags, ["FITID", "DTPOSTED", "TRNAMT"])
         records.append({
             "ref_origem": tags["FITID"],
             "data": parse.br_date(tags["DTPOSTED"]),

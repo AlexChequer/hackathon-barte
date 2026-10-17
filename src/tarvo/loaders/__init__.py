@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from tarvo.loaders.aurora import load_aurora
+from tarvo.loaders.layout import LayoutInvalido
 from tarvo.loaders.meridiano import load_meridiano
 from tarvo.loaders.orbe import load_orbe
 from tarvo.loaders.plano import load_plano
@@ -78,19 +79,28 @@ LEITORES = {
 }
 
 
-def load_disponiveis(data_dir: Path) -> tuple[dict, list[str]]:
-    """Carrega o que estiver na pasta. Arquivo obrigatório ausente vira None e entra na lista de
-    ausentes (R34: o fechamento roda o que der). Arquivo repetido continua sendo erro."""
+def load_disponiveis(data_dir: Path) -> tuple[dict, list[str], dict[str, str]]:
+    """Carrega o que estiver na pasta (R34: o fechamento roda o que der).
+
+    Devolve (fontes, ausentes, layout). Arquivo ausente ou com layout diferente vira None e entra
+    em `ausentes`; para layout, `layout[chave]` traz a mensagem (arquivo, coluna que falta, o que veio).
+    Arquivo repetido continua sendo erro."""
     sources: dict = {}
     ausentes: list[str] = []
+    layout: dict[str, str] = {}
     for chave in FILES:
         if not sorted(data_dir.glob(FILES[chave])):
             sources[chave] = None
             ausentes.append(chave)
             continue
-        sources[chave] = (_load_orbe_completa(data_dir) if chave == "orbe"
-                          else LEITORES[chave](find_file(data_dir, chave)))
-    return sources, ausentes
+        try:
+            sources[chave] = (_load_orbe_completa(data_dir) if chave == "orbe"
+                              else LEITORES[chave](find_file(data_dir, chave)))
+        except LayoutInvalido as erro:
+            sources[chave] = None
+            ausentes.append(chave)
+            layout[chave] = str(erro)
+    return sources, ausentes, layout
 
 
 def load_all(data_dir: Path) -> dict:

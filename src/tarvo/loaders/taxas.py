@@ -6,6 +6,7 @@ import openpyxl
 import pandas as pd
 
 from tarvo import parse
+from tarvo.loaders.layout import exigir
 
 SHEET = "Taxas vigentes"
 HEADER_ROW = 5
@@ -39,6 +40,7 @@ def load_taxas(path: Path) -> pd.DataFrame:
     ws = openpyxl.load_workbook(path, data_only=True)[SHEET]
     rows = list(ws.iter_rows(min_row=HEADER_ROW))
     header = [cell.value for cell in rows[0]]
+    exigir(path, header, [c for c in COLUMNS if c != "Obs"])
     records = [
         {
             "linha_origem": HEADER_ROW + offset,

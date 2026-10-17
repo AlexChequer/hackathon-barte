@@ -39,8 +39,18 @@ FRENTES = {
 }
 
 
-def bloqueios(presentes: set[str]) -> list[dict]:
-    """Frentes que não fecham por completo com os arquivos presentes, na ordem de FRENTES."""
+def bloqueios(presentes: set[str], layout: dict[str, str] | None = None) -> list[dict]:
+    """Frentes que não fecham por completo com os arquivos presentes, na ordem de FRENTES.
+    `layout` (arquivo → mensagem) explica os que vieram mas não deu para ler (R34)."""
+    return [_com_layout(b, layout or {}) for b in _bloqueios(presentes)]
+
+
+def _com_layout(bloqueio: dict, layout: dict[str, str]) -> dict:
+    mensagens = [layout[a] for a in bloqueio["faltando"] if a in layout]
+    return {**bloqueio, "motivo_layout": " ".join(mensagens)} if mensagens else bloqueio
+
+
+def _bloqueios(presentes: set[str]) -> list[dict]:
     resultado = []
     for frente, regra in FRENTES.items():
         faltando = [a for a in regra["precisa"] if a not in presentes]
@@ -71,12 +81,14 @@ def pendencias_bloqueio(lista: list[dict], competencia: str) -> EngineResult:
         pend_id = f"BLOQ-{b['frente'].upper()}-{competencia}"
         nomes = ", ".join(NOME_ARQUIVO[a] for a in b["faltando"])
         estado = "fechou em parte" if b["parcial"] else "não fechou"
+        causa = (f"o arquivo chegou com layout diferente. {b['motivo_layout']} Peça o arquivo no layout "
+                 "de sempre ou ajuste o leitor." if b.get("motivo_layout") else f"falta {nomes}.")
         pendencias.append({
             "id_saida": pend_id,
             "tipo": "FRENTE_BLOQUEADA",
             "ref_origem": "|".join(b["faltando"]),
             "valor_brl": Decimal("0.00"),
-            "motivo": (f"Frente {b['frente']} {estado}: falta {nomes}. Não saiu: {b['nao_sai']}. "
+            "motivo": (f"Frente {b['frente']} {estado}: {causa} Não saiu: {b['nao_sai']}. "
                        "Envie o arquivo e feche de novo (R34)."),
             "quem_decide": "Financeiro",
         })
