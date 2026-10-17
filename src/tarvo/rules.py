@@ -6,10 +6,9 @@ Mudança de regra implica bump de VERSION para a persistência marcar execuçõe
 
 from __future__ import annotations
 
-import datetime as dt
 from decimal import Decimal
 
-VERSION = "2026-10-17.2"
+VERSION = "2026-10-17.3"
 
 # R3: de-para EC Orbe → CNPJ, confirmado pela Helena. Taxas e vigências vêm das
 # linhas da planilha com esse CNPJ (em runtime); o nome do lojista não é usado.
@@ -22,11 +21,8 @@ EC_PARA_CNPJ = {
 # R3 + P10: Atlas (1076801732) não tem contrato vigente.
 EC_SEM_CONTRATO = {"1076801732": "ATLAS IDIOMAS"}
 
-# R6 + P6: Casa do Estudante tem tarifa 0% em MDR e antecipação de 01/09 a 31/12/2026.
-# Estorno de venda anterior usa a taxa histórica da linha vigente.
-CASA_ESTUDANTE_EC = "1018325654"
-CASA_ESTUDANTE_INICIO = dt.date(2026, 9, 1)
-CASA_ESTUDANTE_FIM = dt.date(2026, 12, 31)
+# R6: condições comerciais fora da planilha (ex.: isenção da Casa do Estudante) ficam em
+# config/condicoes_comerciais.json, lidas por tarvo.condicoes.
 
 # R5: Ponte Câmbio – spread padrão (vazio ou texto "padrão" na planilha) = 1,5%.
 SPREAD_PADRAO = Decimal("0.015")

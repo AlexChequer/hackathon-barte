@@ -13,6 +13,7 @@ from decimal import Decimal
 
 import pandas as pd
 
+from tarvo import condicoes as cond_mod
 from tarvo import rules
 from tarvo.engines import EngineResult
 from tarvo.money import ZERO, pct, q, q_mul, sum_q
@@ -133,29 +134,57 @@ def _modalidade_coluna(modalidade: str | None, qtd_parcelas: object) -> str | No
     return None
 
 
-def _taxa_contratada(entry: LojistaTaxas, tx: pd.Series, data_regra: dt.date) -> Decimal | None:
-    """Taxa contratada da transação, aplicando a isenção da Casa (R6/P6) quando aplicável."""
-    tipo = tx["tipo_lancamento"]
-    if tipo in {"ANTECIPACAO", "REVERSAO ANTECIPACAO"}:
-        base = entry.antecipacao
+@dataclass(frozen=True)
+class TaxaResolvida:
+    """Taxa contratada da transação e de onde ela veio (planilha ou condição comercial)."""
+
+    contratada: Decimal | None
+    planilha: Decimal | None
+    condicao: cond_mod.Condicao | None
+
+
+def _taxa_contratada(
+    entry: LojistaTaxas, tx: pd.Series, data_regra: dt.date, condicoes: tuple[cond_mod.Condicao, ...]
+) -> TaxaResolvida:
+    """Taxa da planilha (o que a Orbe conhece) e, se houver, a condição comercial vigente (R6)."""
+    if tx["tipo_lancamento"] in {"ANTECIPACAO", "REVERSAO ANTECIPACAO"}:
+        coluna = "antecipacao"
     else:
         coluna = _modalidade_coluna(tx.get("modalidade"), tx.get("qtd_parcelas"))
-        base = getattr(entry, coluna) if coluna else None
-    # Casa do Estudante (R6/P6): 0% em MDR + antecipação durante a vigência da isenção.
-    if (
-        str(tx["cod_estabelecimento"]) == rules.CASA_ESTUDANTE_EC
-        and rules.CASA_ESTUDANTE_INICIO <= data_regra <= rules.CASA_ESTUDANTE_FIM
-    ):
-        return ZERO
-    return base
+    planilha = getattr(entry, coluna) if coluna else None
+    condicao = cond_mod.vigente(condicoes, entry.cnpj, data_regra, coluna) if coluna else None
+    contratada = condicao.taxas[coluna] if condicao else planilha
+    return TaxaResolvida(contratada, planilha, condicao)
+
+
+def _divergencias(bruto: Decimal, aplicada: Decimal | None, taxa: TaxaResolvida) -> tuple[Decimal, Decimal]:
+    """(parte da Orbe, parte da condição comercial), cada uma arredondada (R8).
+
+    Orbe cobrou diferente da planilha → falha da Orbe (cobrável). Planilha diferente da condição
+    comercial → a Orbe não foi avisada: falha da Tarvo, só devolver ao lojista (R16.1, R22).
+    """
+    if aplicada is None or aplicada == taxa.contratada:
+        return ZERO, ZERO
+    if taxa.condicao is None:
+        return q_mul(bruto, aplicada - taxa.contratada), ZERO
+    parte_orbe = q_mul(bruto, aplicada - taxa.planilha) if aplicada != taxa.planilha else ZERO
+    parte_cond = q_mul(bruto, taxa.planilha - taxa.contratada) if taxa.planilha != taxa.contratada else ZERO
+    return parte_orbe, parte_cond
 
 
 def _diagnostico(code: str, **detalhes) -> dict:
     return {"codigo": code, **detalhes}
 
 
-def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResult:
+def run(
+    orbe: pd.DataFrame,
+    taxas: pd.DataFrame,
+    competencia: str,
+    condicoes: tuple[cond_mod.Condicao, ...] | None = None,
+) -> EngineResult:
     registry = build_taxas_registry(taxas)
+    if condicoes is None:
+        condicoes = cond_mod.carregar()
     result = EngineResult()
 
     # Pré-indexa antecipações (REVERSÃO precisa recuperar a comissão da original: P13).
@@ -228,7 +257,8 @@ def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResu
             })
             continue
 
-        contratada = _taxa_contratada(entry, tx, data_regra)
+        taxa = _taxa_contratada(entry, tx, data_regra, condicoes)
+        contratada = taxa.contratada
 
         # REVERSAO ANTECIPACAO (P13): anula comissão arredondada da antecipação original.
         if tipo == "REVERSAO ANTECIPACAO":
@@ -259,12 +289,15 @@ def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResu
                 "ec": ec,
                 "comissao": comissao,
                 "divergencia": ZERO,
+                "divergencia_condicao": ZERO,
                 "data_movimento": data_tx,
                 "tipo": tipo,
                 "taxa_contratada": contratada,
+                "taxa_planilha": taxa.planilha,
                 "taxa_aplicada": taxa_aplicada,
                 "linha_planilha": entry.linha_planilha,
                 "contratada_fonte": "antecipacao_original",
+                "condicao_id": None,
             })
             continue
 
@@ -287,9 +320,7 @@ def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResu
         if tipo == "ANTECIPACAO":
             comissao_antecipacao[tx["id_transacao"]] = comissao
 
-        divergencia = ZERO
-        if taxa_aplicada is not None and contratada != taxa_aplicada:
-            divergencia = q_mul(valor_bruto, taxa_aplicada - contratada)
+        divergencia, divergencia_condicao = _divergencias(valor_bruto, taxa_aplicada, taxa)
 
         linhas_tx.append({
             "id_transacao": tx["id_transacao"],
@@ -298,12 +329,15 @@ def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResu
             "ec": ec,
             "comissao": comissao,
             "divergencia": divergencia,
+            "divergencia_condicao": divergencia_condicao,
             "data_movimento": data_tx,
             "tipo": tipo,
             "taxa_contratada": contratada,
+            "taxa_planilha": taxa.planilha,
             "taxa_aplicada": taxa_aplicada,
             "linha_planilha": entry.linha_planilha,
-            "contratada_fonte": "planilha",
+            "contratada_fonte": "condicao" if taxa.condicao else "planilha",
+            "condicao_id": taxa.condicao.id if taxa.condicao else None,
             "valor_bruto": valor_bruto,
         })
 
@@ -420,6 +454,13 @@ def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResu
                 "metadata": "divergencia_checkout",
             })
 
+        cond_rows, cond_rastro, cond_pend = _divergencias_condicao(linhas_df, condicoes, competencia)
+        divergencias_rows.extend(cond_rows)
+        rastro_rows.extend(cond_rastro)
+        pendencias_cond = cond_pend
+    else:
+        pendencias_cond = []
+
     # Rastro de pendências (precisa de origem para `check_rastro`, inclusive quando valor=0).
     for p in pend_df.to_dict("records") if not pend_df.empty else []:
         rastro_rows.append({
@@ -433,6 +474,8 @@ def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResu
     result.comissoes = pd.DataFrame(comissoes_rows)
     result.divergencias = pd.DataFrame(divergencias_rows)
     result.notas = pd.DataFrame(notas_rows)
+    if pendencias_cond:
+        pend_df = pd.concat([pend_df, pd.DataFrame(pendencias_cond)], ignore_index=True)
     if not pend_df.empty:
         result.pendencias = pend_df.rename(columns={"id": "id_saida"})[
             ["id_saida", "tipo", "ref_origem", "valor_brl", "motivo", "quem_decide"]
@@ -440,6 +483,54 @@ def run(orbe: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResu
     result.rastro = pd.DataFrame(rastro_rows)
     result.diagnosticos = diagnosticos
     return result
+
+
+def _divergencias_condicao(
+    linhas_df: pd.DataFrame, condicoes: tuple[cond_mod.Condicao, ...], competencia: str
+) -> tuple[list[dict], list[dict], list[dict]]:
+    """Linhas CK-COND (detalhe por transação) + 1 pendência por lojista com o total (R22, R24.1).
+
+    Não entra na cobrança da Orbe: a Orbe cobrou certo pela planilha (R16.1). Pendência para o
+    Financeiro com o Comercial: devolver ao lojista, atualizar a planilha e avisar a Orbe.
+    """
+    por_id = {c.id: c for c in condicoes}
+    divergencias, rastro, pendencias = [], [], []
+    marcadas = linhas_df[linhas_df["divergencia_condicao"] != ZERO]
+    for cnpj, grupo in marcadas.groupby("cnpj", sort=True):
+        pend_id = f"CK-COND-PEND-{competencia}-{cnpj}"
+        for _, tx in grupo.iterrows():
+            div_id = f"CK-COND-{tx['id_transacao']}"
+            divergencias.append({
+                "id_saida": div_id,
+                "cnpj": cnpj,
+                "linha_negocio": "CHECKOUT",
+                "ref_origem": tx["id_transacao"],
+                "taxa_contratada_pct": pct(tx["taxa_contratada"]),
+                "taxa_aplicada_pct": pct(tx["taxa_planilha"]),
+                "diferenca_brl": tx["divergencia_condicao"],
+            })
+            for id_saida, meta in [(div_id, f"divergencia_condicao;{tx['condicao_id']}"),
+                                   (pend_id, f"pendencia_CONDICAO_NAO_INFORMADA_ORBE;{tx['condicao_id']}")]:
+                rastro.append({"id_saida": id_saida, "arquivo_origem": ARQUIVO_ORBE,
+                               "ref_origem": tx["id_transacao"], "valor": tx["divergencia_condicao"],
+                               "metadata": meta})
+        total = sum_q(grupo["divergencia_condicao"])
+        conds = [por_id[c] for c in sorted(set(grupo["condicao_id"]))]
+        fontes = "; ".join(f"{c.id} ({c.fonte}, aprovado por {c.aprovado_por})" for c in conds)
+        pendencias.append({
+            "id": pend_id,  # rastro já emitido por transação acima; não passa pelo laço genérico
+            "tipo": "CONDICAO_NAO_INFORMADA_ORBE",
+            "ref_origem": cnpj,
+            "valor_brl": total,
+            "motivo": (
+                f"{_canonical_lojista(grupo)}: a Orbe cobrou a taxa da planilha em {len(grupo)} transações, "
+                f"mas vale condição comercial registrada fora dela ({fontes}). Devolver {total} ao lojista; "
+                "não cobrar da Orbe (R16.1, R22). Atualizar a planilha e avisar a Orbe. "
+                "Detalhe por transação: linhas CK-COND-* em divergencias_taxa."
+            ),
+            "quem_decide": "Financeiro + Comercial",
+        })
+    return divergencias, rastro, pendencias
 
 
 def _competencia_fmt(competencia: str) -> str:
@@ -465,6 +556,7 @@ def _canonical_lojista(grupo: pd.DataFrame) -> str:
 def _explicar_zero(grupo: pd.DataFrame) -> list[str]:
     """R6/P11: zero é 'sem nota sem alarme' quando há explicação (ex.: Casa isenta set-dez)."""
     razoes = []
-    if (grupo["ec"] == rules.CASA_ESTUDANTE_EC).any() and (grupo["taxa_contratada"] == ZERO).any():
-        razoes.append("Casa do Estudante: isenção MDR + antecipação set-dez/2026 (R6).")
+    por_condicao = grupo[(grupo["contratada_fonte"] == "condicao") & (grupo["taxa_contratada"] == ZERO)]
+    for cid in sorted(set(por_condicao["condicao_id"])):
+        razoes.append(f"Condição comercial {cid} com taxa zero (config/condicoes_comerciais.json).")
     return razoes

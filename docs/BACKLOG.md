@@ -35,7 +35,10 @@ Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relat�
 
 ## Checkout
 
-- [ ] 🟢 📋 **Casa do Estudante fora de `divergencias_taxa`** (R16.1): vira pendência de devolução ao lojista (Financeiro + Comercial), com o valor (R$ 15,4 mil). Não é cobrança da Orbe.
+- [x] 📋 **Casa do Estudante como condição comercial** (P19): 118 linhas `CK-COND-*` + 1 pendência `CONDICAO_NAO_INFORMADA_ORBE` (R$ 15.397,42, Financeiro + Comercial). A cobrar da Orbe: só `CK-DIV-*` (R$ 1.576,23).
+- [ ] 🟢 📋 **Detector de sinais** (obs, comentários, cabeçalho): palavras-chave + classificador binário plugável (Ollama/Llama, hospedado ou Haiku via `.env`; sem chave = só palavras-chave). Sinal sem condição registrada → pendência `CONDICAO_ESPECIAL_A_CONFIRMAR` (Comercial).
+- [ ] 🟢 **Tela: responder pendência de condição** grava em `config/condicoes_comerciais.json` (campos estruturados + texto; classificador binário decide se o texto é útil para guardar).
+- [ ] 🟢 Condição ativa mas planilha/Orbe ainda na taxa antiga → pendência "atualizar planilha e avisar a Orbe" (já sai no motivo); alerta de vencimento (≤ 30 dias).
 
 - [x] ~~Divergência vira pendência?~~ R16: divergência de contrato fica em `divergencias_taxa` (Helena decide caso a caso); **Casa é outra natureza** (item abaixo).
 - [x] **Estorno de venda divergente** (R16.3: venda e estorno se anulam, cobra só o líquido). Já é o que o motor faz.
