@@ -2,9 +2,23 @@
 
 Base: motor v1 do Helio (`main`), conferido contra R1–R14 e O1. O que já funciona está em `docs/MVP_V1.md`. Aqui fica só o que falta.
 
-**Checkpoints da organização (no canal):**
-- **11h45, Checkpoint 1:** causa raiz em até 2 frases; nível (mínimo, alvo ou extra); plano até 18h30 em 2 a 4 marcos com horário; 3 premissas não confirmadas e o que muda se estiverem erradas; o que fica de fora de propósito; quem faz o quê.
-- **16h, Checkpoint 2:** o que já roda ponta a ponta; o que mudou desde a manhã e por quê; o que vão cortar; maior risco e o que estão fazendo; onde a banca pode ajudar.
+**Linha do tempo (organização, 10h28 de 17/10):**
+
+| Hora | Marco |
+|---|---|
+| 11h45 | Checkpoint 1 (opcional): o plano |
+| 16h00 | Checkpoint 2 (opcional): a reta final |
+| **17h45** | **Fim do atendimento do financeiro** |
+| **18h30** | **Link do repositório por e-mail** (commits depois são ignorados) |
+| 19h00 | Link do pitch por e-mail |
+| 19h30 | Apresentação dos finalistas |
+| 20h30 | Premiação |
+
+Checkpoints: **uma pessoa do time** manda por mensagem privada para o Manuel Freitas, começando com o nome do time. Recebe devolutiva curta da banca.
+- **Checkpoint 1:** causa raiz em até 2 frases; nível (mínimo, alvo ou extra); plano até 18h30 em 2 a 4 marcos com horário; 3 premissas não confirmadas e o que muda se estiverem erradas; o que fica de fora de propósito; quem faz o quê.
+- **Checkpoint 2:** o que já roda ponta a ponta; o que mudou desde a manhã e por quê; o que vão cortar; maior risco e o que estão fazendo; onde a banca pode ajudar.
+
+Dúvidas: no canal, com `[Financeiro]` ou `[Logística]` e o nome do time, uma por thread.
 
 Legenda: 🔒 depende de resposta · 🟢 pode fazer já · 📋 entra no relatório de pendências
 
