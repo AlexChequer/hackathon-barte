@@ -62,7 +62,7 @@ def test_api_fechamento_traz_tabelas_e_validacoes(cliente):
     corpo = r.json()
     assert corpo["competencia"] == "2026-09"
     assert corpo["validacoes"]["rastro_ok"] and corpo["validacoes"]["integridade_ok"]
-    assert len(corpo["tabelas"]["pendencias"]) == 15
+    assert len(corpo["tabelas"]["pendencias"]) == 16
     assert corpo["totais"]["comissao_checkout"] == "203735.34"
 
 

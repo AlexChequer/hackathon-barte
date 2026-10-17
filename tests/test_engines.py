@@ -136,9 +136,11 @@ def test_four_negative_operations_are_excluded(res_remessa):
 
 
 def test_duplicata_pc0926_0162_dedup_sem_pendencia_conflito(res_remessa):
-    """PC-0926-0162 aparece 2× com mesmos dados → fica 1× sem abrir conflito."""
+    """PC-0926-0162 aparece 2× com mesmos dados → fica 1× sem abrir conflito.
+    (R12: ela entra só na lista para a Ponte corrigir o relatório, DUPLICATA_RELATORIO_PONTE.)"""
     pend = res_remessa.pendencias
-    assert "PC-0926-0162" not in set(pend["ref_origem"])
+    da_operacao = pend[pend["ref_origem"].str.startswith("PC-0926-0162")]
+    assert set(da_operacao["tipo"]) == {"DUPLICATA_RELATORIO_PONTE"}
     # E a operação entra em participação exatamente 1 vez.
     parts = res_remessa.rastro[(res_remessa.rastro["ref_origem"] == "PC-0926-0162")
                                 & (res_remessa.rastro["metadata"] == "participacao_remessa")]

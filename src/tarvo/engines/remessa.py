@@ -76,6 +76,7 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             # Preserva a primeira; registra evidência da repetição.
             primeira = grupo.iloc[0]
             deduped.append(primeira)
+            pendencias.append(_pendencia_duplicata(n_op, grupo, competencia))
             for _, extra in grupo.iloc[1:].iterrows():
                 fora_da_nota.append((extra, "duplicata"))
                 duplicados_resolvidos.append({
@@ -240,6 +241,14 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             # Divergência não vira pendência: a linha em divergencias.csv já é a saída oficial
             # para o humano decidir. Duplicar causaria id_saida repetido e rastro em dobro.
 
+    # Duplicatas: rastro por cópia a mais (a pendência foi aberta na deduplicação, R12).
+    for p in pendencias:
+        if p["tipo"] == "DUPLICATA_RELATORIO_PONTE":
+            for valor in p["copias"]:
+                rastro_rows.append({"id_saida": p["id"], "arquivo_origem": ARQUIVO_PONTE,
+                                    "ref_origem": p["ref_origem"], "valor": valor,
+                                    "metadata": "pendencia_DUPLICATA_RELATORIO_PONTE"})
+
     # Contestação com a Ponte: uma pendência por lojista com spread acima do contrato (R10, R12,
     # R24.1), valor cheio (R7), rastro por operação. A nota segue pelo realizado (R10).
     for cnpj, total, linhas in _divergencias_por_lojista(divergencias_rows):
@@ -380,6 +389,31 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     result.rastro = pd.DataFrame(rastro_rows)
     result.diagnosticos = [{"codigo": "DUPLICATA_RESOLVIDA", **d} for d in duplicados_resolvidos]
     return result
+
+
+def _pendencia_duplicata(n_op: str, grupo: pd.DataFrame, competencia: str) -> dict:
+    """R12: a operação conta uma vez no fechamento e entra na lista para a Ponte corrigir o relatório."""
+    copias = [q(v or ZERO) for v in grupo.iloc[1:]["spread_brl"]]
+    total = sum_q(copias)
+    linhas = ", ".join(f"L{int(n)}" for n in grupo["linha_origem"])
+    return {
+        "id": f"RM-DUPREL-{competencia}-{n_op}",
+        "tipo": "DUPLICATA_RELATORIO_PONTE",
+        "ref_origem": n_op,
+        "arquivo_origem": ARQUIVO_PONTE,
+        "valor_brl": total,
+        "motivo": (
+            f"{n_op} ({grupo.iloc[0]['cliente']}) aparece {len(grupo)} vezes no relatório da Ponte "
+            f"({linhas}). No fechamento conta uma vez (R5). O relatório soma {total} de spread a mais, "
+            f"o que aumenta a nossa metade em {q(total * Decimal('0.5'))} no total da Ponte. "
+            "Pedir à Ponte que corrija o relatório (R12)."
+        ),
+        "quem_decide": "Financeiro",
+        "cnpj": grupo.iloc[0]["cnpj"],
+        "linha_negocio": "REMESSA",
+        "rastro_proprio": True,
+        "copias": copias,
+    }
 
 
 def _divergencias_por_lojista(divergencias: list[dict]) -> list[tuple[str, Decimal, list[dict]]]:
