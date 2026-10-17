@@ -155,6 +155,15 @@ def run_closing(dados: Path, saida: Path, competencia: str | None = None) -> Clo
     if len(duplicados):
         integridade.append({"codigo": "ID_SAIDA_DUPLICADO", "ids": duplicados.index.tolist()})
 
+    # Cobertura: toda entrada relevante tem que ter saída (comissão, divergência, pendência ou lançamento).
+    entradas_esperadas = {
+        "orbe": set(sources["orbe"]["id_transacao"].astype(str).unique()),
+        "ponte": set(sources["ponte"]["n_operacao"].astype(str).unique()),
+        "aurora": set(sources["aurora"]["ref_origem"].astype(str).unique()),
+        "meridiano": set(sources["meridiano"]["ref_origem"].astype(str).unique()),
+    }
+    integridade.extend(output.validate_cobertura_entradas(entradas_esperadas, rastro))
+
     # Diretório da execução (timestamp) + symlink `latest`.
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = saida / competencia / f"exec_{stamp}"

@@ -182,6 +182,54 @@ def _diagnostico(code: str, **detalhes) -> dict:
     return {"codigo": code, **detalhes}
 
 
+def _dedup_orbe(
+    orbe: pd.DataFrame,
+) -> tuple[list[pd.Series], list[dict], list[dict]]:
+    """R24.1: id_transacao duplicado com mesmos dados financeiros entra 1×; dados divergentes
+    abrem pendência DUPLICATA_CONFLITANTE para o Financeiro.
+    """
+    chaves_fin = ["valor_bruto", "valor_taxa", "valor_liquido", "taxa_aplicada", "tipo_lancamento"]
+    deduped: list[pd.Series] = []
+    duplicados_resolvidos: list[dict] = []
+    pendencias: list[dict] = []
+    for id_tx, grupo in orbe.groupby("id_transacao", sort=False):
+        if len(grupo) == 1:
+            deduped.append(grupo.iloc[0])
+            continue
+        unicos = grupo[chaves_fin].drop_duplicates()
+        if len(unicos) == 1:
+            deduped.append(grupo.iloc[0])
+            for _, extra in grupo.iloc[1:].iterrows():
+                duplicados_resolvidos.append({
+                    "id_transacao": id_tx, "linha_origem": int(extra["linha_origem"]),
+                })
+        else:
+            for _, linha in grupo.iterrows():
+                pendencias.append({
+                    "id": f"CK-DUPCONF-{id_tx}-L{int(linha['linha_origem'])}",
+                    "tipo": "DUPLICATA_CONFLITANTE",
+                    "ref_origem": f"{id_tx}#L{int(linha['linha_origem'])}",
+                    "arquivo_origem": ARQUIVO_ORBE,
+                    "valor_brl": q(linha["valor_taxa"] or ZERO),
+                    "motivo": (
+                        f"id_transacao {id_tx} aparece em linhas com dados financeiros divergentes;"
+                        " não escolhemos qual é a correta."
+                    ),
+                    "quem_decide": "Financeiro",
+                    "cnpj": None,
+                    "linha_negocio": "CHECKOUT",
+                    "ec": str(linha.get("cod_estabelecimento")),
+                })
+    return deduped, duplicados_resolvidos, pendencias
+
+
+def _dentro_competencia(data: dt.date | None, competencia: str) -> bool:
+    """R24.1: só considera dentro quando a data existe e bate com AAAA-MM."""
+    if data is None:
+        return False
+    return f"{data.year:04d}-{data.month:02d}" == competencia
+
+
 def run(
     orbe: pd.DataFrame,
     taxas: pd.DataFrame,
@@ -193,15 +241,34 @@ def run(
         condicoes = cond_mod.carregar()
     result = EngineResult()
 
-    # Pré-indexa antecipações (REVERSÃO precisa recuperar a comissão da original: P13).
+    deduped, duplicados_resolvidos, pendencias_tx = _dedup_orbe(orbe)
+
+    # Pré-pass: comissão arredondada de cada ANTECIPACAO para a REVERSAO achar em qualquer ordem (P13).
     comissao_antecipacao: dict[str, Decimal] = {}
+    for tx in deduped:
+        if tx["tipo_lancamento"] != "ANTECIPACAO":
+            continue
+        ec = str(tx["cod_estabelecimento"])
+        if ec in rules.EC_SEM_CONTRATO:
+            continue
+        entries = registry.get(ec)
+        if not entries:
+            continue
+        data_regra = _data_vigencia(tx)
+        entry = _row_vigente(entries, data_regra) if data_regra else entries[-1]
+        if entry is None or entry.antecipacao is None:
+            continue
+        bruto = tx["valor_bruto"] if isinstance(tx["valor_bruto"], Decimal) \
+            else Decimal(str(tx["valor_bruto"]))
+        comissao_antecipacao[tx["id_transacao"]] = q_mul(bruto, entry.antecipacao)
 
     linhas_tx: list[dict] = []  # cada tx vira "contribuicao" de comissao + info de divergência
-    pendencias_tx: list[dict] = []
     sem_contrato_tx: list[pd.Series] = []
-    diagnosticos: list[dict] = []
+    diagnosticos: list[dict] = [
+        {"codigo": "DUPLICATA_RESOLVIDA_ORBE", **d} for d in duplicados_resolvidos
+    ]
 
-    for _, tx in orbe.iterrows():
+    for tx in deduped:
         ec = str(tx["cod_estabelecimento"])
         tipo = tx["tipo_lancamento"]
         valor_bruto = tx["valor_bruto"] if isinstance(tx["valor_bruto"], Decimal) \
@@ -213,6 +280,26 @@ def run(
         # EC sem contrato (R3/P10/R30): não fatura, não inventa taxa; agrega por lojista no fim.
         if ec in rules.EC_SEM_CONTRATO:
             sem_contrato_tx.append(tx)
+            continue
+
+        # Competência: a venda cai no mês da data_movimento; estorno cai no mês do estorno (R2/R29).
+        # Linha com data fora da competência não deveria estar neste lote: pendência para o Financeiro.
+        if not _dentro_competencia(data_tx, competencia):
+            pendencias_tx.append({
+                "id": f"CK-FORA-{tx['id_transacao']}",
+                "tipo": "FORA_COMPETENCIA",
+                "ref_origem": tx["id_transacao"],
+                "arquivo_origem": ARQUIVO_ORBE,
+                "valor_brl": q(tx["valor_taxa"] or ZERO),
+                "motivo": (
+                    f"Transação {tx['id_transacao']} com data_movimento {data_tx} fora da "
+                    f"competência {competencia}; não entra na apuração do mês."
+                ),
+                "quem_decide": "Financeiro",
+                "cnpj": None,
+                "linha_negocio": "CHECKOUT",
+                "ec": ec,
+            })
             continue
 
         entries = registry.get(ec)
@@ -310,9 +397,6 @@ def run(
             continue
 
         comissao = q_mul(valor_bruto, contratada)
-        if tipo == "ANTECIPACAO":
-            comissao_antecipacao[tx["id_transacao"]] = comissao
-
         divergencia, divergencia_condicao = _divergencias(valor_bruto, taxa_aplicada, taxa)
 
         linhas_tx.append({

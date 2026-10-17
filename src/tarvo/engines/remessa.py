@@ -5,6 +5,7 @@ Fontes: `ponte` + `taxas` (coluna `spread_remessa`). Regras: R4/R5/R7/R8, premis
 
 from __future__ import annotations
 
+import datetime as dt
 from decimal import Decimal
 
 import pandas as pd
@@ -32,6 +33,18 @@ def _spread_contratado(taxas: pd.DataFrame) -> dict[str, Decimal]:
             out[cnpj] = rules.SPREAD_PADRAO
         # texto inválido não resolvido: deixa cair como ausente para o motor pendir
     return out
+
+
+def _dentro_competencia(data: dt.date | None, competencia: str) -> bool:
+    if data is None:
+        return False
+    return f"{data.year:04d}-{data.month:02d}" == competencia
+
+
+def _nome_lojista(nomes: list[str]) -> str:
+    """Nome representativo quando o mesmo CNPJ aparece com variações no relatório da Ponte."""
+    limpos = [n for n in (str(x).strip() for x in nomes if x) if n]
+    return max(limpos, key=len) if limpos else "?"
 
 
 def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineResult:
@@ -78,17 +91,49 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
     divergencias_rows: list[dict] = []
     rastro_rows: list[dict] = []
 
-    por_lojista: dict[tuple[str, str], Decimal] = {}
-    rastros_por_lojista: dict[tuple[str, str], list[tuple[str, Decimal]]] = {}
+    por_lojista: dict[str, Decimal] = {}
+    nomes_por_cnpj: dict[str, list[str]] = {}
+    rastros_por_lojista: dict[str, list[tuple[str, Decimal]]] = {}
     nota_contribuicoes: list[dict] = []
 
     for op in deduped:
         n_op = op["n_operacao"]
-        spread_brl = op["spread_brl"]
-        if spread_brl is None:
-            continue
         cnpj = op["cnpj"]
         cliente = op["cliente"]
+        data_contratacao = op.get("data_contratacao")
+        spread_brl = op["spread_brl"]
+        if not _dentro_competencia(data_contratacao, competencia):
+            pendencias.append({
+                "id": f"RM-FORA-{n_op}",
+                "tipo": "FORA_COMPETENCIA",
+                "ref_origem": n_op,
+                "arquivo_origem": ARQUIVO_PONTE,
+                "valor_brl": q(spread_brl or ZERO),
+                "motivo": (
+                    f"Operação {n_op} com data_contratacao {data_contratacao} fora da competência"
+                    f" {competencia}; não entra na apuração do mês."
+                ),
+                "quem_decide": "Financeiro",
+                "cnpj": cnpj,
+                "linha_negocio": "REMESSA",
+            })
+            continue
+        if spread_brl is None:
+            pendencias.append({
+                "id": f"RM-SPRAUS-{n_op}",
+                "tipo": "SPREAD_AUSENTE",
+                "ref_origem": n_op,
+                "arquivo_origem": ARQUIVO_PONTE,
+                "valor_brl": ZERO,
+                "motivo": (
+                    f"Operação {n_op} ({cliente}) sem spread R$ no relatório da Ponte;"
+                    " não dá para apurar comissão sem o valor."
+                ),
+                "quem_decide": "Ponte Câmbio",
+                "cnpj": cnpj,
+                "linha_negocio": "REMESSA",
+            })
+            continue
         spread_pct_valor = op["spread_pct"]
         ptax = op["ptax_ref"]
         valor_me = op["valor_me"]
@@ -130,12 +175,12 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
             })
             continue
 
-        # Participação por operação (R5 + R8).
+        # Participação por operação (R5 + R8). R24.1: agrupa por CNPJ só; o nome varia entre linhas.
         participacao = q_mul(spread_brl, Decimal("0.5"))
-        chave = (cnpj, cliente)
-        por_lojista.setdefault(chave, ZERO)
-        por_lojista[chave] += participacao
-        rastros_por_lojista.setdefault(chave, []).append((n_op, participacao))
+        por_lojista.setdefault(cnpj, ZERO)
+        por_lojista[cnpj] += participacao
+        nomes_por_cnpj.setdefault(cnpj, []).append(cliente)
+        rastros_por_lojista.setdefault(cnpj, []).append((n_op, participacao))
         nota_contribuicoes.append({"n_operacao": n_op, "cnpj": cnpj, "participacao": participacao})
 
         # Divergência de spread (R5/R7 + P5/P7).
@@ -181,16 +226,16 @@ def run(ponte: pd.DataFrame, taxas: pd.DataFrame, competencia: str) -> EngineRes
 
     # 3) Comissões REMESSA por lojista.
     comissao_rows_df: list[dict] = []
-    for (cnpj, cliente), total in sorted(por_lojista.items()):
+    for cnpj, total in sorted(por_lojista.items()):
         id_saida = f"RM-CM-{competencia}-{cnpj}"
         comissao_rows_df.append({
             "id_saida": id_saida,
             "cnpj": cnpj,
-            "lojista": cliente,
+            "lojista": _nome_lojista(nomes_por_cnpj[cnpj]),
             "linha_negocio": "REMESSA",
             "comissao_brl": total,
         })
-        for n_op, valor in rastros_por_lojista[(cnpj, cliente)]:
+        for n_op, valor in rastros_por_lojista[cnpj]:
             rastro_rows.append({
                 "id_saida": id_saida,
                 "arquivo_origem": ARQUIVO_PONTE,

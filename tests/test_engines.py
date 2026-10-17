@@ -246,7 +246,12 @@ def test_transferencia_sem_chegada_no_outro_banco_fica_em_transito_em_qualquer_d
 
 def test_spread_negativo_fica_fora_em_qualquer_competencia(sources):
     """R5: spread negativo não é aceito. Não depende de lista fixa de ids nem do mês."""
-    res = rm.run(sources["ponte"], sources["taxas"], "2027-09")
+    ponte = sources["ponte"].assign(
+        data_contratacao=lambda df: df["data_contratacao"].map(
+            lambda d: d.replace(year=2027) if d else d
+        ),
+    )
+    res = rm.run(ponte, sources["taxas"], "2027-09")
     neg = res.pendencias[res.pendencias["tipo"] == "SPREAD_NEGATIVO_CONTESTAR"]
     assert len(neg) == 4
     assert set(neg["quem_decide"]) == {"Financeiro"}
@@ -256,6 +261,90 @@ def test_spread_negativo_fica_fora_em_qualquer_competencia(sources):
 def test_competencia_inferida_dos_dados(sources):
     from tarvo.orquestrador import inferir_competencia
     assert inferir_competencia(sources) == "2026-09"
+
+
+# ---------------- ROBUSTEZ DE PIPELINE ----------------
+
+def test_reversao_antecipacao_funciona_com_ordem_invertida(sources):
+    """P13 + two-pass: a REVERSAO acha a comissão da ANTECIPACAO mesmo se vier antes dela."""
+    orbe = sources["orbe"]
+    tipos = set(orbe["tipo_lancamento"])
+    assert {"ANTECIPACAO", "REVERSAO ANTECIPACAO"} <= tipos
+    orig = ck.run(orbe, sources["taxas"], "2026-09")
+    invertida = orbe.iloc[::-1].reset_index(drop=True)
+    inv = ck.run(invertida, sources["taxas"], "2026-09")
+    # Soma de comissões por CNPJ não pode variar com a ordem.
+    orig_sum = orig.comissoes.set_index("cnpj")["comissao_brl"].to_dict()
+    inv_sum = inv.comissoes.set_index("cnpj")["comissao_brl"].to_dict()
+    assert orig_sum == inv_sum
+    rev_sem_ref = inv.pendencias[inv.pendencias["tipo"] == "REVERSAO_SEM_REFERENCIA"]
+    assert rev_sem_ref.empty  # com two-pass, não tem mais pendência de ordem
+
+
+def test_transacao_duplicada_na_orbe_vai_contar_uma_vez(sources):
+    """R24.1: id_transacao repetido com mesmos dados financeiros não dobra a comissão."""
+    orbe = sources["orbe"]
+    # Pega uma linha de venda simples e duplica.
+    original = orbe[orbe["tipo_lancamento"] == "VENDA"].iloc[0]
+    duplicada = original.copy()
+    duplicada["linha_origem"] = int(orbe["linha_origem"].max()) + 1
+    import pandas as pd
+    orbe_dup = pd.concat([orbe, duplicada.to_frame().T], ignore_index=True)
+    res_orig = ck.run(orbe, sources["taxas"], "2026-09")
+    res_dup = ck.run(orbe_dup, sources["taxas"], "2026-09")
+    cnpj_alvo = res_orig.comissoes.set_index("cnpj")["comissao_brl"].to_dict()
+    cnpj_dup = res_dup.comissoes.set_index("cnpj")["comissao_brl"].to_dict()
+    assert cnpj_alvo == cnpj_dup
+    # Nenhuma pendência de conflito porque os dados são idênticos.
+    assert "DUPLICATA_CONFLITANTE" not in set(res_dup.pendencias.get("tipo", []))
+
+
+def test_transacao_fora_da_competencia_vai_para_pendencia(sources):
+    """Linha com data_movimento fora da competência não entra na apuração."""
+    import datetime as dt
+    orbe = sources["orbe"].copy()
+    linha = orbe[orbe["tipo_lancamento"] == "VENDA"].iloc[0].copy()
+    linha["id_transacao"] = "TX-FORA-9999"
+    linha["data_movimento"] = dt.date(2026, 8, 15)
+    linha["linha_origem"] = int(orbe["linha_origem"].max()) + 1
+    import pandas as pd
+    orbe_fora = pd.concat([orbe, linha.to_frame().T], ignore_index=True)
+    res = ck.run(orbe_fora, sources["taxas"], "2026-09")
+    fora = res.pendencias[res.pendencias["tipo"] == "FORA_COMPETENCIA"]
+    assert "TX-FORA-9999" in set(fora["ref_origem"])
+
+
+def test_remessa_spread_ausente_vira_pendencia(sources):
+    """Operação sem spread R$ não some em silêncio: abre pendência SPREAD_AUSENTE."""
+    ponte = sources["ponte"].copy()
+    alvo = ponte.index[0]
+    ponte.at[alvo, "spread_brl"] = None
+    res = rm.run(ponte, sources["taxas"], "2026-09")
+    ausente = res.pendencias[res.pendencias["tipo"] == "SPREAD_AUSENTE"]
+    assert len(ausente) == 1
+    assert ausente["quem_decide"].iloc[0] == "Ponte Câmbio"
+
+
+def test_remessa_agrupa_por_cnpj_mesmo_com_nome_variando(sources):
+    """Mesma empresa com variação do nome entre linhas: 1 linha de comissão por CNPJ."""
+    ponte = sources["ponte"].copy()
+    alvo = ponte[ponte["cnpj"] == ponte["cnpj"].mode().iloc[0]]
+    assert len(alvo) >= 2
+    # Força variação do nome mantendo o CNPJ.
+    ponte.loc[alvo.index[:1], "cliente"] = ponte.loc[alvo.index[0], "cliente"] + " ME"
+    res = rm.run(ponte, sources["taxas"], "2026-09")
+    comissoes_cnpj = res.comissoes["cnpj"].value_counts()
+    assert (comissoes_cnpj == 1).all()
+
+
+def test_cobertura_entradas_detecta_input_sem_saida(tmp_path):
+    """validate_cobertura_entradas: ref de entrada que não foi tocada por nenhuma saída é problema."""
+    from tarvo.output import validate_cobertura_entradas
+    rastro = __import__("pandas").DataFrame([
+        {"id_saida": "X1", "arquivo_origem": "orbe", "ref_origem": "TX1", "valor": Decimal("1")},
+    ])
+    problemas = validate_cobertura_entradas({"orbe": {"TX1", "TX2"}}, rastro)
+    assert any(p["codigo"] == "INPUT_SEM_SAIDA" and "TX2" in p["refs"] for p in problemas)
 
 
 def test_repasse_da_ponte_de_mes_anterior_baixa_recebivel_em_qualquer_mes():

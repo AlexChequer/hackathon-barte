@@ -86,3 +86,30 @@ def validate_rastro_integrity(rastro: pd.DataFrame, all_outputs_ids: set[str]) -
     if orfaos:
         problemas.append({"codigo": "RASTRO_ORFAO", "ids": sorted(orfaos)})
     return problemas
+
+
+def validate_cobertura_entradas(
+    entradas: dict[str, set[str]], rastro: pd.DataFrame
+) -> list[dict]:
+    """Para cada ref_origem de cada arquivo de entrada, confirma que ela aparece em alguma linha
+    de saída via rastro. Caso contrário é dado perdido: INPUT_SEM_SAIDA.
+
+    `entradas` é um dict `{arquivo_origem: set[ref_origem]}` com as refs que o fechamento se
+    comprometeu a tocar (ex.: todas as transações Orbe, todas as operações da Ponte).
+    """
+    problemas: list[dict] = []
+    if not entradas:
+        return problemas
+    if rastro.empty:
+        cobertos: dict[str, set[str]] = {k: set() for k in entradas}
+    else:
+        cobertos = {
+            arq: set(rastro.loc[rastro["arquivo_origem"] == arq, "ref_origem"].astype(str).unique())
+            for arq in entradas
+        }
+    for arq, esperadas in entradas.items():
+        esperadas_str = {str(r) for r in esperadas}
+        faltantes = sorted(esperadas_str - cobertos.get(arq, set()))
+        if faltantes:
+            problemas.append({"codigo": "INPUT_SEM_SAIDA", "arquivo_origem": arq, "refs": faltantes})
+    return problemas
