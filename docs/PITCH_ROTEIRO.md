@@ -62,7 +62,8 @@ Sobram 30 s de folga para a demo atrasar.
 | Pergunta | Resposta curta |
 |---|---|
 | A IA vê dados dos lojistas? | Não. Recebe marcadores ({VALOR_1}, {LOJISTA_1}); nomes, CNPJs e valores são preenchidos na máquina, e um validador reprova número escrito pelo modelo (P36) |
-| Por que não usar IA no cálculo? | Pode alucinar ou trocar um dígito, e no financeiro isso é prejuízo que ninguém vê. Aqui toda conta tem regra, então um algoritmo determinístico acerta sempre e é auditável. Medimos, e a regra simples ganhou |\n| Então por que usar IA nos e-mails? | É texto e é lento, e é o que recupera o dinheiro. Um erro de redação é barato: a Helena revisa antes de enviar. E a IA não escreve número nenhum |
+| Por que não usar IA no cálculo? | Pode alucinar ou trocar um dígito, e no financeiro isso é prejuízo que ninguém vê. Aqui toda conta tem regra, então um algoritmo determinístico acerta sempre e é auditável. Medimos, e a regra simples ganhou |
+| Então por que usar IA nos e-mails? | É texto e é lento, e é o que recupera o dinheiro. Um erro de redação é barato: a Helena revisa antes de enviar. E a IA não escreve número nenhum |
 | E se a Orbe mudar o layout? | O arquivo não é usado, a pendência diz qual coluna sumiu e as frentes que não dependem dele fecham |
 | Quanto tempo economiza? | Não prometemos número sem rodar um mês real com a Helena. É o primeiro item do próximo mês |
 | E se a Helena sair? | É o ponto do projeto: as regras estão em `HIPOTESES.md` com a resposta que as sustenta, e as decisões novas ficam registradas com quem decidiu |
