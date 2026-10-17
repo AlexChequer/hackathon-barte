@@ -5,15 +5,17 @@ from __future__ import annotations
 
 import datetime as dt
 import fnmatch
+import io
 import logging
 import math
+import zipfile
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Any
 
 import pandas as pd
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from tarvo import autenticacao as auth_mod
@@ -22,7 +24,7 @@ from tarvo import decisoes, rules, sinais, tratamentos
 from tarvo.avaliacao import avaliar_e_persistir
 from tarvo.loaders import ESPERADOS, FILES, OPCIONAIS, load_disponiveis
 from tarvo.loaders.identificar import classificar_lote
-from tarvo.orquestrador import ClosingResult, run_closing
+from tarvo.orquestrador import SAIDAS, ClosingResult, run_closing
 
 log = logging.getLogger("tarvo.web")
 STATIC = Path(__file__).resolve().parent / "static"
@@ -395,6 +397,23 @@ def criar_app(
             )
         except decisoes.DecisaoInvalida as exc:
             raise HTTPException(422, str(exc)) from exc
+
+    # Download da saída: os 6 CSVs do fechamento que está na tela, exatamente como foram gravados.
+    @app.get("/api/saida.zip")
+    def baixar_saida_zip() -> Response:
+        r = resultado()
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as pacote:
+            for nome in SAIDAS:
+                pacote.write(r.out_dir / nome, arcname=nome)
+        return Response(buffer.getvalue(), media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="saida_{r.competencia}.zip"'})
+
+    @app.get("/api/saida/{nome}")
+    def baixar_saida(nome: str) -> FileResponse:
+        if nome not in SAIDAS:
+            raise HTTPException(404, f"{nome} não é um dos arquivos de saída")
+        return FileResponse(resultado().out_dir / nome, media_type="text/csv", filename=nome)
 
     @app.get("/api/metricas")
     def get_metricas() -> dict:

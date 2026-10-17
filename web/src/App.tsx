@@ -9,6 +9,7 @@ import { Arquivos } from "./components/Upload";
 import { Divergencias, Lancamentos, Numeros, Rastro as RastroTabela } from "./components/Tabelas";
 import { RastroContext } from "./components/Valor";
 import { ARQUIVO, FRENTE } from "./format";
+import { BaixarSaida } from "./components/BaixarSaida";
 
 type Tela = "arquivos" | "pendencias" | "numeros" | "divergencias" | "lancamentos" | "rastro" | "condicoes";
 
@@ -143,6 +144,7 @@ export default function App() {
                         setTela("pendencias");
                       }}
                     />
+                    {f && <BaixarSaida competencia={f.competencia} />}
                   </motion.div>
                 </AnimatePresence>
               ) : !f ? (
