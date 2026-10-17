@@ -61,3 +61,25 @@ O que é *interpretação* está marcado como **hipótese** e precisa ir para `H
 - **Meridiano: armadilha de nome.** `PIX RECEB PONTE AÉREA ESTUDANTIL` é o **lojista** Ponte Aérea, não a Ponte Câmbio. Regra por palavra-chave "PONTE" erra.
 - Meridiano `MRD2026090132`: `TED RECEB PONTE CAMBIO SA REPASSE COMISSAO 08/2026` de +61.884,12 é a comissão de **agosto** recebida em setembro (baixa de 1.1.03.002, não receita de setembro?).
 - **Meridiano** (conta de câmbio): PIX recebidos de lojistas (recurso para remessa), 21 TEDs enviadas à Ponte, PIX/TED recebidos da Ponte, aplicação/resgate CDB, rendimento, IOF, tarifas, seguro, TEDs recebidas da própria Tarvo.
+
+## Sinais de condição especial (varredura de 17/10)
+
+A isenção da Casa do Estudante **não está em nenhuma tabela**. Só apareceu por dois sinais de texto na planilha (obs "cliente estratégico - ver c/ comercial" e o comentário de célula A13 "conversar com Diego (comercial) sobre condição especial") e foi confirmada pela Helena na R6. O loader original nem lia o comentário (MOMENTOS, momento 3).
+
+Varredura de todos os textos livres do data pack de setembro:
+
+| Onde | Sinal | Situação |
+|---|---|---|
+| Taxas, cabeçalho | "atualizar sempre que o comercial fechar!!" · "última atualização: 02/09 - Bia" | Contexto: a planilha depende de alguém lembrar |
+| Taxas L13 (Casa) | obs "cliente estratégico - ver c/ comercial" + comentário A13 "condição especial" | **Condição fora da planilha** (R6: 0% set–dez). Resolvida |
+| Taxas L6/L7 (Bridge) | "renegociado - ver linha de baixo" / "a partir de 15/09" / "só mudou o crédito à vista" | Registrada na planilha. Orbe cobrou a antiga até 18/09 (aguarda resposta: Orbe foi avisada?) |
+| Taxas L15 (Mundo Aberto) | "spread negociado em jul/26" (1,2%) | Registrada na planilha. Ponte não aplicou (R5) |
+| Taxas L9 (Kiwi) | "EC pendente" | Cadastro incompleto. Resolvida (R3) |
+| Taxas L16/L23 (Ponte Aérea, Nórdica) | "só remessa", taxas de checkout vazias | Coerente: 0 transações na Orbe |
+| Taxas L30 (Globo Trotter) | "INATIVO desde jul/26", sem vigência | Coerente: 0 transações na Orbe e na Ponte |
+| Aba "ANTIGO 2025 - nao usar" | Tabela 2025 de 12 lojistas, **incluindo Atlas (CNPJ 39566044000119)**, que não está na aba vigente | Não usada (R3: Atlas não fatura até o Comercial confirmar). Fato útil para o Comercial |
+| E-mail da Ponte | Repasse de 50% em 06/10 "mediante nota fiscal"; ressalva segue normal; divergência em até 5 dias úteis | Coberto (R4, R5, R12) |
+| Ponte, coluna Obs. | "Taxa travada no pedido (D-1)" ×4; "reprocessada" ×1 | Negativos e duplicata. Cobertos (R5, R12) |
+| Linhas/colunas ocultas, outras abas | Nenhuma além da aba 2025 | — |
+
+**Conclusão:** em setembro, a Casa é o único caso de condição comercial fora da planilha. Mas o padrão ("ver c/ comercial", "condição especial", "negociado", "renegociado") é texto livre e pode voltar em outubro com outro lojista.
